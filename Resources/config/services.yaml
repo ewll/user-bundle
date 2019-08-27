@@ -1,0 +1,21 @@
+services:
+    Ewll\UserBundle\Authenticator\Authenticator:
+        arguments:
+            - '@ewll.db.repository-provider'
+            - '%ewll_user.domain%'
+            - '@router.default'
+            - '@ewll.db.client.default'
+            - '@Ewll\MailerBundle\Mailer'
+            - '%ewll_user.salt%'
+
+    Ewll\UserBundle\Controller\UserController:
+        public: true
+        arguments: ['@Ewll\UserBundle\Authenticator\Authenticator']
+
+    Ewll\UserBundle\Constraints\UniqueEmailValidator:
+        arguments: ['@ewll.db.repository-provider']
+        tags: ['validator.constraint_validator']
+
+    Ewll\UserBundle\Constraints\PasswordValidator:
+        arguments: ['@Ewll\UserBundle\Authenticator\Authenticator']
+        tags: ['validator.constraint_validator']

@@ -1,0 +1,16 @@
+loginPage:
+  path: /login
+  controller: Ewll\UserBundle\Controller\UserController::loginPage
+  methods: [GET]
+login:
+  path: /login
+  controller: Ewll\UserBundle\Controller\UserController::login
+  methods: [POST]
+signupPage:
+  path: /signup
+  controller: Ewll\UserBundle\Controller\UserController::signupPage
+  methods: [GET]
+signup:
+  path: /signup
+  controller: Ewll\UserBundle\Controller\UserController::signup
+  methods: [POST]

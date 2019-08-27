@@ -10,7 +10,12 @@
     }
   ],
   "require": {
-    "php": "^7.3"
+    "php": "^7.3",
+    "ext-json": "*",
+    "symfony/form": "^4.3",
+    "symfony/validator": "^4.3",
+    "symfony/framework-bundle": "^4.3",
+    "ewll/db-bundle": "^2.11"
   },
   "autoload": {
     "psr-4": {
