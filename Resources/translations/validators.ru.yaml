@@ -1,0 +1,5 @@
+unique-email: Такой email уже есть в системе
+incorrect-password: Неверный пароль
+email-not-confirmed: Email адрес не подтвержден
+cannot-be-empty: Значение не должно быть пустым.
+user-not-found-by-email: Пользователь не найден

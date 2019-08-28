@@ -1,4 +1,4 @@
-<?php namespace App\Migration;
+<?php namespace Ewll\UserBundle\Migration;
 
 use Ewll\DBBundle\Migration\MigrationInterface;
 
@@ -19,6 +19,7 @@ CREATE TABLE `user` (
     `timezone` VARCHAR (30) NOT NULL DEFAULT 'Atlantic/Reykjavik',
     `emailConfirmationCode` VARCHAR (64) NULL,
     `isEmailConfirmed` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
+    `accessRights` TEXT NOT NULL DEFAULT '[]',
     `createdTs` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     INDEX `email_pass` (`email`, `pass`),

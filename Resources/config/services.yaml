@@ -10,12 +10,38 @@ services:
 
     Ewll\UserBundle\Controller\UserController:
         public: true
-        arguments: ['@Ewll\UserBundle\Authenticator\Authenticator']
+        arguments:
+            - '@Ewll\UserBundle\Authenticator\Authenticator'
+            - '@Ewll\UserBundle\Form\DataTransformer\UserToEmailTransformer'
 
     Ewll\UserBundle\Constraints\UniqueEmailValidator:
         arguments: ['@ewll.db.repository-provider']
         tags: ['validator.constraint_validator']
 
-    Ewll\UserBundle\Constraints\PasswordValidator:
+    Ewll\UserBundle\Constraints\PassMatchValidator:
         arguments: ['@Ewll\UserBundle\Authenticator\Authenticator']
         tags: ['validator.constraint_validator']
+
+    Ewll\UserBundle\Constraints\ConfirmedEmailValidator:
+        arguments: ['@ewll.db.repository-provider']
+        tags: ['validator.constraint_validator']
+
+    Ewll\UserBundle\Form\DataTransformer\UserToEmailTransformer:
+        arguments: ['@ewll.db.repository-provider']
+
+    Ewll\UserBundle\AccessRule\AccessRuleProvider:
+        arguments: [!tagged access_rule]
+
+    Ewll\UserBundle\AccessRule\AccessChecker: []
+
+    Ewll\UserBundle\AccessRule\UserAccessRule:
+        tags: ['access_rule']
+
+    Ewll\UserBundle\Command\EditUserAccessRuleCommand:
+        arguments:
+            - '@ewll.db.repository-provider'
+            - '@Ewll\UserBundle\AccessRule\AccessRuleProvider'
+            - '@Ewll\UserBundle\AccessRule\AccessChecker'
+        tags:
+            - { name: 'console.command', command: 'ewll:user:access-rules' }
+            - { name: monolog.logger, channel: access_rules }

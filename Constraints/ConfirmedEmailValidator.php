@@ -6,7 +6,7 @@ use Symfony\Component\Validator\Constraint;
 use Symfony\Component\Validator\ConstraintValidator;
 use Symfony\Component\Validator\Exception\UnexpectedTypeException;
 
-class UniqueEmailValidator extends ConstraintValidator
+class ConfirmedEmailValidator extends ConstraintValidator
 {
     private $repositoryProvider;
 
@@ -17,18 +17,21 @@ class UniqueEmailValidator extends ConstraintValidator
 
     public function validate($value, Constraint $constraint)
     {
-        if (!$constraint instanceof UniqueEmail) {
-            throw new UnexpectedTypeException($constraint, __NAMESPACE__.'\UniqueEmail');
+        if (!$constraint instanceof ConfirmedEmail) {
+            throw new UnexpectedTypeException($constraint, __NAMESPACE__.'\ConfirmedEmail');
         }
 
         if (null === $value || '' === $value) {
             return;
         }
 
-        /** @var User|null $account */
-        $user = $this->repositoryProvider->get(User::class)->findOneBy(['email' => $value]);
+        /** @var User|null $user */
+        $user = $this->context->getRoot()->get('email')->getData();
+        if (null === $user) {
+            return;
+        }
 
-        if (null !== $user) {
+        if (!$user->isEmailConfirmed) {
             $this->context->buildViolation($constraint->message)->addViolation();
         }
     }

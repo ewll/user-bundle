@@ -16,6 +16,8 @@ class User
     public $emailConfirmationCode;
     /** @Db\BoolType */
     public $isEmailConfirmed = 0;
+    /** @Db\JsonType */
+    public $accessRights = [['id' => 1]];
     /** @Db\TimestampType */
     public $createdTs;
 

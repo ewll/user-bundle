@@ -2,7 +2,7 @@
 
 use Symfony\Component\Validator\Constraint;
 
-class UniqueEmail extends Constraint
+class PassMatch extends Constraint
 {
-    public $message = 'unique-email';
+    public $message = 'incorrect-password';
 }

@@ -68,11 +68,11 @@
         methods: {
             submit() {
                 let url = this.config.pageName === 'login' ? '/login' : '/signup';
-                Main.default.request(this.$http, this.$snack, 'post', url, this.form, function (response) {
-                    if (this.config.page === 'login') {
+                Main.default.request(this.$http, this.$snack, 'post', url, this.form, function () {
+                    if (this.config.pageName === 'login') {
                         let urlParts = window.location.href.split('#');
                         let sharpParams = urlParts.length === 2 ? '#' + urlParts[1] : '';
-                        window.location.href = '/lk' + sharpParams
+                        window.location.href = '/private' + sharpParams
                     } else {
                         this.successSignup = true;
                     }

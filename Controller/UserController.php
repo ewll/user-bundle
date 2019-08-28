@@ -1,7 +1,13 @@
 <?php namespace Ewll\UserBundle\Controller;
 
 use Ewll\UserBundle\Authenticator\Authenticator;
+use Ewll\UserBundle\Authenticator\Exception\CannotConfirmEmailException;
+use Ewll\UserBundle\Constraints\ConfirmedEmail;
+use Ewll\UserBundle\Constraints\PassMatch;
 use Ewll\UserBundle\Constraints\UniqueEmail;
+use Ewll\UserBundle\Entity\User;
+use Ewll\UserBundle\Form\DataTransformer\UserToEmailTransformer;
+use Ewll\UserBundle\Form\Exception\FormValidationException;
 use RuntimeException;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\Extension\Core\Type\PasswordType;
@@ -15,18 +21,57 @@ use Symfony\Component\Validator\Constraints\NotBlank;
 
 class UserController extends AbstractController
 {
-    const ROUTE_NAME_LOGIN = 'login';
+    const ROUTE_NAME_LOGIN = 'loginPage';
 
     private $authenticator;
+    private $userToEmailTransformer;
 
-    public function __construct(Authenticator $authenticator)
+    public function __construct(Authenticator $authenticator, UserToEmailTransformer $userToEmailTransformer)
     {
         $this->authenticator = $authenticator;
+        $this->userToEmailTransformer = $userToEmailTransformer;
     }
 
-    public function loginPage()
+    public function loginPage(Request $request, string $code = null)
     {
-        return $this->getAuthPage('login');
+        $isSigned = $this->authenticator->isSigned($request->cookies->get('s'));
+        if ($isSigned) {
+            return $this->redirect('/private');
+        }
+
+        $jsConfig = ['emailConfirmed' => false];
+        if (!empty($code)) {
+            try {
+                $this->authenticator->confirmEmail($code);
+                $jsConfig['emailConfirmed'] = true;
+            } catch (CannotConfirmEmailException $e) {
+            }
+        }
+
+        return $this->getAuthPage('login', $jsConfig);
+    }
+
+    public function login(Request $request)
+    {
+        $form = $this->makeAndHandleAuthForm($request);
+        try {
+            if (!$form->isValid()) {
+                throw new FormValidationException();
+            }
+            $data = $form->getData();
+            /** @var User $user */
+            $user = $data['email'];
+            $this->authenticator->login($user);
+
+            return new JsonResponse([]);
+        } catch (FormValidationException $e) {
+            $errors = [];
+            foreach ($form->getErrors(true) as $error) {
+                $errors[$error->getOrigin()->getName()] = $error->getMessage();
+            }
+
+            return new JsonResponse(['errors' => $errors], 400);
+        }
     }
 
     public function signupPage()
@@ -49,13 +94,18 @@ class UserController extends AbstractController
         return new JsonResponse([]);
     }
 
-    private function getAuthPage(string $pageName)
+    public function exit()
+    {
+        $this->authenticator->exit();
+
+        return $this->redirect('/login');
+    }
+
+    private function getAuthPage(string $pageName, array $jsConfig = [])
     {
         $token = '~';
-        $jsConfig = [
-            'token' => $token,
-            'pageName' => $pageName,
-        ];
+        $jsConfig['token'] = $token;
+        $jsConfig['pageName'] = $pageName;
         $data = [
             'jsConfig' => addslashes(json_encode($jsConfig, JSON_HEX_QUOT | JSON_HEX_APOS)),
             'year' => date('Y'),
@@ -69,17 +119,27 @@ class UserController extends AbstractController
 
     private function makeAndHandleAuthForm(Request $request, bool $isSignup = false): FormInterface
     {
-        $emailConstraints = [new NotBlank(), new Email()];
+        $formConstraints = [];
+        $emailConstraints = [];
+        $passConstraints = [new NotBlank()];
         if ($isSignup) {
+            $emailConstraints[] = new NotBlank();
+            $emailConstraints[] = new Email();
             $emailConstraints[] = new UniqueEmail();
+        } else {
+            $passConstraints[] = new PassMatch();
+            $emailConstraints[] = new ConfirmedEmail();
         }
-        $formBuilder = $this->createFormBuilder(null, ['csrf_protection'   => false])
+        $formBuilder = $this->createFormBuilder(null, ['csrf_protection' => false, 'constraints' => $formConstraints])
             ->add('email', TextType::class, [
                 'constraints' => $emailConstraints,
             ])
             ->add('pass', PasswordType::class, [
-                'constraints' => [new NotBlank()]
+                'constraints' => $passConstraints
             ]);
+        if (!$isSignup) {
+            $formBuilder->get('email')->addModelTransformer($this->userToEmailTransformer);
+        }
         $form = $formBuilder->getForm();
         $form->handleRequest($request);
 
