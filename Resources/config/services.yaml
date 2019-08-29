@@ -6,6 +6,7 @@ services:
             - '@router.default'
             - '@ewll.db.client.default'
             - '@Ewll\MailerBundle\Mailer'
+            - '@request_stack'
             - '%ewll_user.salt%'
 
     Ewll\UserBundle\Controller\UserController:

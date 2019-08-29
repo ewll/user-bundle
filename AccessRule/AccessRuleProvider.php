@@ -8,7 +8,8 @@ class AccessRuleProvider
     {
         $this->accessRules = $accessRules;
     }
-    public function getById(int $id)
+
+    public function findById(int $id): ?AccessRuleInterface
     {
         /** @var AccessRuleInterface $accessRule */
         foreach ($this->accessRules as $accessRule) {
@@ -20,11 +21,23 @@ class AccessRuleProvider
         return null;
     }
 
-    public function getByName(string $name)
+    public function findByName(string $name): ?AccessRuleInterface
     {
         /** @var AccessRuleInterface $accessRule */
         foreach ($this->accessRules as $accessRule) {
             if ($name === $accessRule->getName()) {
+                return $accessRule;
+            }
+        }
+
+        return null;
+    }
+
+    public function findByClassName(string $className): ?AccessRuleInterface
+    {
+        /** @var AccessRuleInterface $accessRule */
+        foreach ($this->accessRules as $accessRule) {
+            if ($accessRule instanceof $className) {
                 return $accessRule;
             }
         }

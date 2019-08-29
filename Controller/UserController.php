@@ -2,6 +2,7 @@
 
 use Ewll\UserBundle\Authenticator\Authenticator;
 use Ewll\UserBundle\Authenticator\Exception\CannotConfirmEmailException;
+use Ewll\UserBundle\Authenticator\Exception\NotAuthorizedException;
 use Ewll\UserBundle\Constraints\ConfirmedEmail;
 use Ewll\UserBundle\Constraints\PassMatch;
 use Ewll\UserBundle\Constraints\UniqueEmail;
@@ -34,9 +35,11 @@ class UserController extends AbstractController
 
     public function loginPage(Request $request, string $code = null)
     {
-        $isSigned = $this->authenticator->isSigned($request->cookies->get('s'));
-        if ($isSigned) {
+        try {
+            $this->authenticator->getUser();
+
             return $this->redirect('/private');
+        } catch (NotAuthorizedException $e) {
         }
 
         $jsConfig = ['emailConfirmed' => false];

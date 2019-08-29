@@ -4,11 +4,12 @@ use Ewll\DBBundle\DB\Client as DbClient;
 use Ewll\DBBundle\Repository\RepositoryProvider;
 use Ewll\MailerBundle\Mailer;
 use Ewll\UserBundle\Authenticator\Exception\CannotConfirmEmailException;
+use Ewll\UserBundle\Authenticator\Exception\NotAuthorizedException;
 use Ewll\UserBundle\Controller\UserController;
 use Ewll\UserBundle\Entity\User;
 use Ewll\UserBundle\Entity\UserSession;
 use Exception;
-use RuntimeException;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Routing\Router;
 
@@ -18,6 +19,7 @@ class Authenticator
     private $domain;
     private $router;
     private $mailer;
+    private $requestStack;
     private $defaultDbClient;
     private $salt;
 
@@ -29,6 +31,7 @@ class Authenticator
         Router $router,
         DbClient $defaultDbClient,
         Mailer $mailer,
+        RequestStack $requestStack,
         string $salt
     ) {
         $this->salt = $salt;
@@ -37,6 +40,7 @@ class Authenticator
         $this->router = $router;
         $this->defaultDbClient = $defaultDbClient;
         $this->mailer = $mailer;
+        $this->requestStack = $requestStack;
     }
 
     public function signUp($email, $pass)
@@ -83,27 +87,26 @@ class Authenticator
         $this->setSessionCookie('', -3600);
     }
 
-    public function isSigned(string $cookie = null)
+    /** @throws NotAuthorizedException */
+    public function getUser(): User
     {
-        if (null === $cookie) {
-            return false;
+        if (null !== $this->user) {
+            return $this->user;
+        }
+
+        $sessionKey = $this->requestStack->getCurrentRequest()->cookies->get('s');
+        if (null === $sessionKey) {
+            throw new NotAuthorizedException();
         }
 
         /** @var UserSession|null $userSession */
-        $userSession = $this->repositoryProvider->get(UserSession::class)->findOneBy(['crypt' => $cookie]);
-        if ($userSession !== null) {
-            $this->user = $this->repositoryProvider->get(User::class)->findById($userSession->userId);
-            $this->user->token = $userSession->token;
+        $userSession = $this->repositoryProvider->get(UserSession::class)->findOneBy(['crypt' => $sessionKey]);
+        if ($userSession === null) {
+            throw new NotAuthorizedException();
         }
 
-        return null !== $this->user;
-    }
-
-    public function getUser(): ?User
-    {
-        if (null === $this->user) {
-            throw new RuntimeException('No user');
-        }
+        $this->user = $this->repositoryProvider->get(User::class)->findById($userSession->userId);
+        $this->user->token = $userSession->token;
 
         return $this->user;
     }

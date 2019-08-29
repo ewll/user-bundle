@@ -68,7 +68,7 @@ class EditUserAccessRuleCommand extends Command
                     throw new CommandException('Provide grant or revoke option!');
                 }
                 /** @var AccessRuleInterface $accessRule */
-                $accessRule = $this->accessRuleProvider->getByName($accessRuleName);
+                $accessRule = $this->accessRuleProvider->findByName($accessRuleName);
                 if ($accessRule === null) {
                     throw new CommandException('Access rule not found');
                 }
@@ -96,7 +96,7 @@ class EditUserAccessRuleCommand extends Command
         $rows = [];
         foreach ($user->accessRights as $accessRight) {
             $list = '';
-            $accessRule = $this->accessRuleProvider->getById($accessRight['id']);
+            $accessRule = $this->accessRuleProvider->findById($accessRight['id']);
             if ($accessRule instanceof AccessRuleListInterface) {
                 $list = implode(',', $accessRight['list']);
             }
