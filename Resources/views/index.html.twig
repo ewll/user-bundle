@@ -11,7 +11,7 @@
     <meta http-equiv=X-UA-Compatible content="IE=edge">
     <meta name=viewport content="width=device-width,initial-scale=1">
     <link rel="icon" type="image/x-icon" href="/inc/favicon.ico"/>
-    <title>{{ pageName|capitalize }} | {{ siteName }}</title>
+    <title>{{ pageName|capitalize }} | {{ siteName|upper }}</title>
 </head>
 <body>
 <noscript>
@@ -26,7 +26,9 @@
 <script>var config = JSON.parse('{{ jsConfig|raw }}');</script>
 {% if env == 'prod' %}
     <script src="/inc/auth/chunk-vendors.js?{{ version }}"></script>
-{% endif %}
     <script src="/inc/auth/app.js?{{ version }}"></script>
+{% else %}
+    <script src="https://localhost:8080/inc/auth/app.js?{{ version }}"></script>
+{% endif %}
 </body>
 </html>

@@ -28,7 +28,8 @@
 @media screen and (max-width: 576px) {
     .snackbar {
         border-radius: 0;
-        width: calc(100% - (2 * var(--padd)))
+        width: 100%;
+        /*width: calc(100% - (2 * var(--padd)))*/
     }
 }
 

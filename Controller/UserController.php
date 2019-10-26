@@ -1,39 +1,52 @@
 <?php namespace Ewll\UserBundle\Controller;
 
+use Ewll\DBBundle\Repository\RepositoryProvider;
 use Ewll\UserBundle\Authenticator\Authenticator;
 use Ewll\UserBundle\Authenticator\Exception\CannotConfirmEmailException;
 use Ewll\UserBundle\Authenticator\Exception\NotAuthorizedException;
-use Ewll\UserBundle\Constraints\ConfirmedEmail;
-use Ewll\UserBundle\Constraints\PassMatch;
-use Ewll\UserBundle\Constraints\UniqueEmail;
+use Ewll\UserBundle\Entity\TwofaCode;
 use Ewll\UserBundle\Entity\User;
-use Ewll\UserBundle\Form\DataTransformer\UserToEmailTransformer;
-use Ewll\UserBundle\Form\Exception\FormValidationException;
-use RuntimeException;
+use Ewll\UserBundle\Entity\UserRecovery;
+use Ewll\UserBundle\Form\FormErrorResponse;
+use Ewll\UserBundle\PageDataCompiler;
+use Ewll\UserBundle\Repository\UserRecoveryRepository;
+use Ewll\UserBundle\Twofa\Exception\EmptyTwofaCodeException;
+use Ewll\UserBundle\Twofa\Exception\IncorrectTwofaCodeException;
+use Ewll\UserBundle\Twofa\TwofaHandler;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\Extension\Core\Type\PasswordType;
-use Symfony\Component\Form\Extension\Core\Type\TextType;
-use Symfony\Component\Form\FormErrorIterator;
-use Symfony\Component\Form\FormInterface;
+use Symfony\Component\Form\FormError;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\Validator\Constraints\Email;
-use Symfony\Component\Validator\Constraints\NotBlank;
+use Symfony\Component\Validator\Constraints;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 class UserController extends AbstractController
 {
-    const ROUTE_NAME_LOGIN = 'loginPage';
+    const ROUTE_NAME_LOGIN_PAGE = 'login.page';
+    const ROUTE_NAME_RECOVERING_FINISH_PAGE = 'passwordRecovering.finishPage';
 
     private $authenticator;
-    private $userToEmailTransformer;
+    private $repositoryProvider;
+    private $pageDataCompiler;
+    private $twofaHandler;
+    private $translator;
 
-    public function __construct(Authenticator $authenticator, UserToEmailTransformer $userToEmailTransformer)
-    {
+    public function __construct(
+        Authenticator $authenticator,
+        RepositoryProvider $repositoryProvider,
+        PageDataCompiler $pageDataCompiler,
+        TwofaHandler $twofaHandler,
+        TranslatorInterface $translator
+    ) {
         $this->authenticator = $authenticator;
-        $this->userToEmailTransformer = $userToEmailTransformer;
+        $this->repositoryProvider = $repositoryProvider;
+        $this->pageDataCompiler = $pageDataCompiler;
+        $this->twofaHandler = $twofaHandler;
+        $this->translator = $translator;
     }
 
-    public function loginPage(Request $request, string $code = null)
+    public function loginPage(string $code = null)
     {
         try {
             $this->authenticator->getUser();
@@ -51,50 +64,104 @@ class UserController extends AbstractController
             }
         }
 
-        return $this->getAuthPage('login', $jsConfig);
+        return $this->pageDataCompiler->getPage(PageDataCompiler::PAGE_NAME_LOGIN, $jsConfig);
     }
 
     public function login(Request $request)
     {
-        $form = $this->makeAndHandleAuthForm($request);
-        try {
-            if (!$form->isValid()) {
-                throw new FormValidationException();
-            }
+        $form = $this->pageDataCompiler->makeAndSubmitAuthForm($request, PageDataCompiler::FORM_AUTH_TYPE_LOGIN);
+        if ($form->isValid()) {
             $data = $form->getData();
             /** @var User $user */
             $user = $data['email'];
-            $this->authenticator->login($user);
+            try {
+                if ($user->hasTwofa()) {
+                    $this->twofaHandler->checkCode($user, $form, TwofaCode::ACTION_ID_LOGIN);
+                }
+                $this->authenticator->login($user, $request->getClientIp());
+                $redirect = $this->authenticator->getRedirectUrlAfterLogin($user);
 
-            return new JsonResponse([]);
-        } catch (FormValidationException $e) {
-            $errors = [];
-            foreach ($form->getErrors(true) as $error) {
-                $errors[$error->getOrigin()->getName()] = $error->getMessage();
+                return new JsonResponse(['redirect' => $redirect]);
+            } catch (EmptyTwofaCodeException $e) {
+                $message = $this->translator->trans('twofa.code.empty', [], 'validators');
+                $form->get('twofaCode')->addError(new FormError($message, null, [], null, $e));
+            } catch (IncorrectTwofaCodeException $e) {
+                $message = $this->translator->trans('twofa.code.incorrect', [], 'validators');
+                $form->get('twofaCode')->addError(new FormError($message, null, [], null, $e));
             }
-
-            return new JsonResponse(['errors' => $errors], 400);
         }
+
+        return new FormErrorResponse($form);
     }
 
     public function signupPage()
     {
-        return $this->getAuthPage('signup');
+        return $this->pageDataCompiler->getPage(PageDataCompiler::PAGE_NAME_SIGNUP);
+    }
+
+    public function passwordRecoveringPage()
+    {
+        return $this->pageDataCompiler->getPage(PageDataCompiler::PAGE_NAME_INIT_RECOVERING);
+    }
+
+    public function passwordRecoveringInit(Request $request)
+    {
+        $form = $this->pageDataCompiler
+            ->makeAndSubmitAuthForm($request, PageDataCompiler::FORM_AUTH_TYPE_RECOVERING_INIT);
+        if ($form->isValid()) {
+            $data = $form->getData();
+            /** @var User $user */
+            $user = $data['email'];
+            $this->authenticator->recoveringInit($user, $request->getClientIp());
+
+            return new JsonResponse([]);
+        }
+
+        return new FormErrorResponse($form);
+    }
+
+    public function passwordRecoveringFinishPage(string $code)
+    {
+        $userRecovery = $this->findUserRecoveryByCode($code);
+        $jsConfig = ['isUserRecoveryFound' => null !== $userRecovery, 'recoveryCode' => $code];
+
+        return $this->pageDataCompiler->getPage(PageDataCompiler::PAGE_NAME_FINISH_RECOVERING, $jsConfig);
+    }
+
+    public function passwordRecoveringRecover(Request $request, string $code)
+    {
+        $formBuilder = $this
+            ->createFormBuilder()
+            ->add('pass', PasswordType::class, [
+                'constraints' => [new Constraints\NotBlank(), new Constraints\Length(['min' => 6])]
+            ]);
+        $form = $formBuilder->getForm();
+        $form->submit($request->request->get('form', []));
+        $userRecovery = $this->findUserRecoveryByCode($code);
+        if (null === $userRecovery) {
+            $form->addError(new FormError('Код восстановления не найден или устарел'));
+        }
+        if ($form->isValid()) {
+            $data = $form->getData();
+            $this->authenticator->recover($userRecovery, $data['pass']);
+
+            return new JsonResponse([]);
+        }
+
+        return new FormErrorResponse($form);
     }
 
     public function signup(Request $request)
     {
-        $form = $this->makeAndHandleAuthForm($request, true);
-        if (!$form->isValid()) {
-            $errors = $this->compileFormErrors($form->getErrors(true));
+        $form = $this->pageDataCompiler->makeAndSubmitAuthForm($request, PageDataCompiler::FORM_AUTH_TYPE_SIGNUP);
+        if ($form->isValid()) {
+            $data = $form->getData();
+            $this->authenticator->signup($data['email'], $data['pass'], $request->getClientIp());
 
-            return new JsonResponse(['errors' => $errors], 400);
+            return new JsonResponse([]);
         }
 
-        $data = $form->getData();
-        $this->authenticator->signUp($data['email'], $data['pass']);
-
-        return new JsonResponse([]);
+        return new FormErrorResponse($form);
     }
 
     public function exit()
@@ -104,62 +171,12 @@ class UserController extends AbstractController
         return $this->redirect('/login');
     }
 
-    private function getAuthPage(string $pageName, array $jsConfig = [])
+    private function findUserRecoveryByCode(string $code): ?UserRecovery
     {
-        $token = '~';
-        $jsConfig['token'] = $token;
-        $jsConfig['pageName'] = $pageName;
-        $data = [
-            'jsConfig' => addslashes(json_encode($jsConfig, JSON_HEX_QUOT | JSON_HEX_APOS)),
-            'year' => date('Y'),
-            'token' => $token,
-            'appName' => 'auth',
-            'pageName' => $pageName,
-        ];
+        /** @var UserRecoveryRepository $userRecoveryRepository */
+        $userRecoveryRepository = $this->repositoryProvider->get(UserRecovery::class);
+        $userRecovery = $userRecoveryRepository->findValidByCode($code);
 
-        return $this->render('@EwllUser/index.html.twig', $data);
-    }
-
-    private function makeAndHandleAuthForm(Request $request, bool $isSignup = false): FormInterface
-    {
-        $formConstraints = [];
-        $emailConstraints = [];
-        $passConstraints = [new NotBlank()];
-        if ($isSignup) {
-            $emailConstraints[] = new NotBlank();
-            $emailConstraints[] = new Email();
-            $emailConstraints[] = new UniqueEmail();
-        } else {
-            $passConstraints[] = new PassMatch();
-            $emailConstraints[] = new ConfirmedEmail();
-        }
-        $formBuilder = $this->createFormBuilder(null, ['csrf_protection' => false, 'constraints' => $formConstraints])
-            ->add('email', TextType::class, [
-                'constraints' => $emailConstraints,
-            ])
-            ->add('pass', PasswordType::class, [
-                'constraints' => $passConstraints
-            ]);
-        if (!$isSignup) {
-            $formBuilder->get('email')->addModelTransformer($this->userToEmailTransformer);
-        }
-        $form = $formBuilder->getForm();
-        $form->handleRequest($request);
-
-        if (!$form->isSubmitted()) {
-            throw new RuntimeException('Form is not submitted');
-        }
-
-        return $form;
-    }
-
-    public function compileFormErrors(FormErrorIterator $errors): array
-    {
-        $view = [];
-        foreach ($errors as $error) {
-            $view[$error->getOrigin()->getName()] = $error->getMessage();
-        }
-
-        return $view;
+        return $userRecovery;
     }
 }

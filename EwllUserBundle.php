@@ -7,5 +7,6 @@ use Symfony\Component\HttpKernel\Bundle\Bundle;
  */
 class EwllUserBundle extends Bundle
 {
-
+    const BUNDLE_NAME = 'EwllUser';
+    const TRANSLATION_DOMAIN = 'user-bundle';
 }

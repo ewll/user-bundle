@@ -1,4 +1,4 @@
-<?php namespace Ewll\UserBundle\Constraints;
+<?php namespace Ewll\UserBundle\Form\Constraints;
 
 use Symfony\Component\Validator\Constraint;
 

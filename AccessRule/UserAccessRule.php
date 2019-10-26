@@ -2,9 +2,11 @@
 
 class UserAccessRule implements AccessRuleInterface
 {
+    const ID = 1;
+
     public function getId(): int
     {
-        return 1;
+        return self::ID;
     }
 
     public function getName(): string

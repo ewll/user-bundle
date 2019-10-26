@@ -1,25 +1,24 @@
-<?php namespace Ewll\UserBundle\Constraints;
+<?php namespace Ewll\UserBundle\Form\Constraints;
 
-use Ewll\UserBundle\Authenticator\Authenticator;
 use Ewll\UserBundle\Entity\User;
 use Ewll\DBBundle\Repository\RepositoryProvider;
 use Symfony\Component\Validator\Constraint;
 use Symfony\Component\Validator\ConstraintValidator;
 use Symfony\Component\Validator\Exception\UnexpectedTypeException;
 
-class PassMatchValidator extends ConstraintValidator
+class ConfirmedEmailValidator extends ConstraintValidator
 {
-    private $authenticator;
+    private $repositoryProvider;
 
-    public function __construct(Authenticator $authenticator)
+    public function __construct(RepositoryProvider $repositoryProvider)
     {
-        $this->authenticator = $authenticator;
+        $this->repositoryProvider = $repositoryProvider;
     }
 
     public function validate($value, Constraint $constraint)
     {
-        if (!$constraint instanceof PassMatch) {
-            throw new UnexpectedTypeException($constraint, __NAMESPACE__.'\PassMatch');
+        if (!$constraint instanceof ConfirmedEmail) {
+            throw new UnexpectedTypeException($constraint, __NAMESPACE__.'\ConfirmedEmail');
         }
 
         if (null === $value || '' === $value) {
@@ -32,8 +31,7 @@ class PassMatchValidator extends ConstraintValidator
             return;
         }
 
-        $hash = $this->authenticator->encodePassword($value);
-        if ($hash !== $user->pass) {
+        if (!$user->isEmailConfirmed) {
             $this->context->buildViolation($constraint->message)->addViolation();
         }
     }

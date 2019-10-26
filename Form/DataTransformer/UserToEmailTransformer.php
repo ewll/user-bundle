@@ -27,10 +27,7 @@ class UserToEmailTransformer implements DataTransformerInterface
     public function reverseTransform($email)
     {
         if (null === $email) {
-            $failure = new TransformationFailedException('Value cannot be null');
-            $failure->setInvalidMessage('cannot-be-empty');
-
-            throw $failure;
+            return null;
         }
 
         $user = $this->repositoryProvider->get(User::class)->findOneBy(['email' => $email]);

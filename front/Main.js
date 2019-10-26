@@ -1,22 +1,23 @@
 export default {
-    request: function (http, snack, method, url, form, func, errorFunc = () => {
-    }) {
+    request: function (http, snack, method, url, form, func, options = {}) {
+        options.errorFunc = undefined === options.errorFunc ? function(){} : options.errorFunc;
+        options.twofaFunc = undefined === options.twofaFunc ? function(){} : options.twofaFunc;
         form.loading = true;
         if (method === 'get') {
             let params = {};
             for (let i in form.filters) {
-                params['f_'+i] = form.filters[i];
+                params['f_' + i] = form.filters[i];
             }
             params['page'] = form.pagination.page;
             params['itemsPerPage'] = form.pagination.itemsPerPage;
-            for(let i in form.sort){
-                params['s_'+form.sort[i]] = 1;
+            for (let i in form.sort) {
+                params['s_' + form.sort[i]] = 1;
             }
             const buildURLQuery = obj =>
                 Object.entries(obj)
                     .map(pair => pair.map(encodeURIComponent).join('='))
                     .join('&');
-            url = url+'?'+buildURLQuery(params);
+            url = url + '?' + buildURLQuery(params);
             http.get(url).then((response) => {
                 form.loading = false;
                 form.pagination.total = response.body.total;
@@ -26,11 +27,11 @@ export default {
             }).catch((response) => {
                 form.loading = false;
                 snack.danger({text: 'Error ' + response.status, button: 'close'});
-                errorFunc();
+                options.errorFunc();
             });
         } else {
             form.errors = {};
-            let post = {};//{'_token': config.token};
+            let post = {'_token': config.token};
             for (let item in form.data) {
                 let name = 'form[' + item + ']';
                 post[name] = form.data[item];
@@ -40,14 +41,18 @@ export default {
                 func(response);
             }).catch((response) => {
                 let errors = {};
-                if (response.status !== 400) {
+                if (response.status === 412) {
+                    options.twofaFunc(response);
+                    errors = response.body.errors;
+                    form.errors = errors;
+                } else if (response.status !== 400) {
                     snack.danger({text: 'Error ' + response.status, button: 'close'});
                 } else {
                     errors = response.body.errors;
                     form.errors = errors;
                 }
                 form.loading = false;
-                errorFunc(response);
+                options.errorFunc(response);
             });
         }
     },
@@ -55,12 +60,17 @@ export default {
         return value.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
     },
     initForm: function (data = {}) {
-        return {
+        let form = {
             data: data,
             errors: {},
             loading: false,
             dialog: false,
         };
+        form.reset = function () {
+            this.data = {};
+            this.errors = {};
+        }.bind(form);
+        return form;
     },
     initGetForm: function (filters = {}, itemsPerPage = 15) {
         let page = 1;

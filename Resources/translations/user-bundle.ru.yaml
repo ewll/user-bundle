@@ -1,0 +1,9 @@
+title:
+  login: Авторизация
+  signup: Регистрация
+  initRecovering: Восстановление пароля
+  finishRecovering: Восстановление пароля
+  twofa: Двухфакторная аутентификация
+  oauth: Oauth
+twofa:
+  code-message: '2fa-код подтверждения: %code%. Действие кода 1 минута. Не показывайте его никому!'

@@ -1,5 +1,23 @@
 unique-email: Такой email уже есть в системе
 incorrect-password: Неверный пароль
 email-not-confirmed: Email адрес не подтвержден
-cannot-be-empty: Значение не должно быть пустым.
 user-not-found-by-email: Пользователь не найден
+csrf-token:
+  not-authorized: Не авторизован
+  not-valid: Csrf-токен неверный
+twofa:
+  provider-not-found: 2fa провайдер не найден
+  has-no: 2fa не был установлен
+  already-has: 2fa уже был установлен
+  code:
+    incorrect: Неверный код
+    empty: 'Заполните это поле'
+  message:
+    cannot-send: Не удалось отправить сообщение
+    recipient-not-exists: Получатель не найден
+    have-active: Срок действия предыдущего кода не истек
+oauth-token:
+  incorrect-or-old: Токен устарел или неверный. Попробуйте еще раз.
+  user:
+    not-exists: Пользователь не найден
+    exists: Пользователь уже был зарегистрирован

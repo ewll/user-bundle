@@ -1,7 +1,14 @@
 const path = require("path");
 
 module.exports = {
-    publicPath: '/inc/admin/',
+    publicPath: '/inc/auth/',
+    devServer: {
+        host: '0.0.0.0',
+        port: 8080,
+        public: 'localhost:8080',
+        disableHostCheck: true,
+        https: true
+    },
     outputDir: path.resolve(__dirname, './../../../../public/inc/auth'),
     configureWebpack: {
         output: {

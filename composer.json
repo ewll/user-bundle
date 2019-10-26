@@ -15,7 +15,11 @@
     "symfony/form": "^4.3",
     "symfony/validator": "^4.3",
     "symfony/framework-bundle": "^4.3",
-    "ewll/db-bundle": "^2.11"
+    "symfony/translation": "^4.3",
+    "ewll/db-bundle": "^2.11",
+    "ewll/mailer-bundle": "^1.1",
+    "guzzlehttp/guzzle": "^6.3",
+    "google/apiclient": "^2.4"
   },
   "autoload": {
     "psr-4": {

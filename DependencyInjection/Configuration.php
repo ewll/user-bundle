@@ -13,13 +13,25 @@ class Configuration implements ConfigurationInterface
      */
     public function getConfigTreeBuilder()
     {
-        $treeBuilder = new TreeBuilder();
-        $rootNode = $treeBuilder->root('ewll_user');
+        $treeBuilder = new TreeBuilder('ewll_user');
 
-        $rootNode
+        $treeBuilder->getRootNode()
             ->children()
-            ->scalarNode('salt')->isRequired()->cannotBeEmpty()->end()
-            ->scalarNode('domain')->isRequired()->cannotBeEmpty()->end();
+                ->scalarNode('salt')->isRequired()->cannotBeEmpty()->end()
+                ->scalarNode('domain')->isRequired()->cannotBeEmpty()->end()
+                ->scalarNode('telegram_bot_name')->isRequired()->cannotBeEmpty()->end()
+                ->scalarNode('telegram_bot_token')->isRequired()->cannotBeEmpty()->end()
+                ->arrayNode('oauth')
+                    ->children()
+                        ->arrayNode('google')
+                            ->children()
+                                ->scalarNode('client_id')->isRequired()->cannotBeEmpty()->end()
+                                ->scalarNode('client_secret')->isRequired()->cannotBeEmpty()->end()
+                            ->end()
+                        ->end()
+                    ->end()
+                ->end()
+            ->end();
 
         return $treeBuilder;
     }
