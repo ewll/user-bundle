@@ -6,15 +6,18 @@ use Ewll\MailerBundle\Mailer;
 use Ewll\MailerBundle\Template;
 use Ewll\UserBundle\Authenticator\Exception\CannotConfirmEmailException;
 use Ewll\UserBundle\Authenticator\Exception\NotAuthorizedException;
-use Ewll\UserBundle\Controller\UserController;
-use Ewll\UserBundle\Entity\OauthToken;
+use Ewll\UserBundle\Entity\Token;
 use Ewll\UserBundle\Entity\User;
-use Ewll\UserBundle\Entity\UserRecovery;
-use Ewll\UserBundle\Entity\UserSession;
 use Ewll\UserBundle\EwllUserBundle;
+use Ewll\UserBundle\Token\Exception\ActiveTokenExistsException;
+use Ewll\UserBundle\Token\Exception\TokenNotFoundException;
+use Ewll\UserBundle\Token\Item\ConfirmEmailToken;
+use Ewll\UserBundle\Token\Item\RecoverPassToken;
+use Ewll\UserBundle\Token\Item\UserSessionToken;
+use Ewll\UserBundle\Token\TokenProvider;
 use Exception;
+use Symfony\Bridge\Monolog\Logger;
 use Symfony\Component\HttpFoundation\RequestStack;
-use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Routing\Router;
 
 class Authenticator
@@ -29,6 +32,8 @@ class Authenticator
     private $mailer;
     private $requestStack;
     private $defaultDbClient;
+    private $tokenProvider;
+    private $logger;
     private $salt;
 
     /** @var User */
@@ -41,36 +46,38 @@ class Authenticator
         DbClient $defaultDbClient,
         Mailer $mailer,
         RequestStack $requestStack,
+        TokenProvider $tokenProvider,
+        Logger $logger,
         string $salt
     ) {
-        $this->salt = $salt;
         $this->repositoryProvider = $repositoryProvider;
         $this->domain = $domain;
         $this->router = $router;
         $this->defaultDbClient = $defaultDbClient;
         $this->mailer = $mailer;
         $this->requestStack = $requestStack;
+        $this->tokenProvider = $tokenProvider;
+        $this->logger = $logger;
+        $this->salt = $salt;
     }
 
     public function signup(string $email, string $pass, string $ip)
     {
-        $hash = $this->encodePassword($pass);
-        $emailConfirmationCode = hash('sha256', $email . microtime());
-        $user = User::create($email, $hash, $ip, false, $emailConfirmationCode);
-        $emailConfirmationLink = 'https:' . $this->router->generate(
-                UserController::ROUTE_NAME_LOGIN_PAGE,
-                ['code' => $user->emailConfirmationCode],
-                UrlGeneratorInterface::NETWORK_PATH
-            );
-        $template = new Template(
-            self::LETTER_NAME_EMAIL_CONFIRMATION,
-            EwllUserBundle::BUNDLE_NAME,
-            ['link' => $emailConfirmationLink]
-        );
+        $this->defaultDbClient->beginTransaction();
         try {
-            $this->defaultDbClient->beginTransaction();
+            $hash = $this->encodePassword($pass);
+            $user = User::create($email, $hash, $ip, false);
             $this->repositoryProvider->get(User::class)->create($user);
+            $tokenData = ['userId' => $user->id];
+            $token = $this->tokenProvider->generate(ConfirmEmailToken::class, $tokenData, $ip);
+            $emailConfirmationLink = $this->tokenProvider->compileTokenPageUrl($token);
+            $template = new Template(
+                self::LETTER_NAME_EMAIL_CONFIRMATION,
+                EwllUserBundle::BUNDLE_NAME,
+                ['link' => $emailConfirmationLink]
+            );
             $this->mailer->createForUser($user, $template, false);
+            $this->logger->info('Success signup', ['userId' => $user->id, 'ip' => $ip]);
             $this->defaultDbClient->commit();
         } catch (Exception $e) {
             $this->defaultDbClient->rollback();
@@ -79,55 +86,70 @@ class Authenticator
         }
     }
 
-    public function signupByOauth(OauthToken $oauthToken, string $pass, string $ip): User
+    public function signupByOauth(Token $token, string $pass, string $ip): User
     {
         $hash = $this->encodePassword($pass);
-        $user = User::create($oauthToken->email, $hash, $ip, true);
+        $user = User::create($token->data['email'], $hash, $ip, true);
+        $this->defaultDbClient->beginTransaction();
         try {
-            $this->defaultDbClient->beginTransaction();
             $this->repositoryProvider->get(User::class)->create($user);
-            $this->repositoryProvider->get(OauthToken::class)->delete($user);
+            $this->tokenProvider->toUse($token);
             $this->defaultDbClient->commit();
-
-            return $user;
+            $this->logger->info('Success signup by oauth', ['userId' => $user->id, 'ip' => $ip]);
         } catch (Exception $e) {
             $this->defaultDbClient->rollback();
 
             throw $e;
         }
+        return $user;
     }
 
     public function login(User $user, string $ip): void
     {
-        $time = microtime();
-        $crypt = hash('sha256', uniqid() . $this->salt . $time . $user->email);
-        $token = hash('sha256', $user->email . $time . $this->salt . uniqid());
-        $userSession = UserSession::create($user->id, $crypt, $token, $ip);
-        $this->repositoryProvider->get(UserSession::class)->create($userSession);
-
-        $this->setSessionCookie($crypt, 86400 * 10);
+        $tokenData = [
+            'userId' => $user->id,
+            'csrf' => hash('sha256', $user->email . time() . $this->salt . uniqid()),
+        ];
+        $token = $this->tokenProvider->generate(UserSessionToken::class, $tokenData, $ip);
+        $this->setSessionCookie($this->tokenProvider->compileTokenCode($token), UserSessionToken::LIFE_TIME * 60);
+        $this->logger->info('Success login', ['userId' => $user->id, 'ip' => $ip]);
     }
 
+    /** @throws ActiveTokenExistsException */
     public function recoveringInit(User $user, string $ip): void
     {
-        $time = microtime();
-        $code = hash('sha256', $time . uniqid() . $this->salt . $user->email);
-        $userRecovery = UserRecovery::create($user->id, $code, $ip);
-        $recoveringLink = 'https:' . $this->router->generate(
-                UserController::ROUTE_NAME_RECOVERING_FINISH_PAGE,
-                ['code' => $code],
-                UrlGeneratorInterface::NETWORK_PATH
-            );
-        $template = new Template(
-            self::LETTER_NAME_RECOVERING,
-            EwllUserBundle::BUNDLE_NAME,
-            ['link' => $recoveringLink]
-        );
+        $this->defaultDbClient->beginTransaction();
         try {
-            $this->defaultDbClient->beginTransaction();
-            $this->repositoryProvider->get(UserRecovery::class)->create($userRecovery);
+            $tokenData = ['userId' => $user->id];
+            $token = $this->tokenProvider->generate(RecoverPassToken::class, $tokenData, $ip, true);
+            $recoveringLink = $this->tokenProvider->compileTokenPageUrl($token);
+            $template = new Template(
+                self::LETTER_NAME_RECOVERING,
+                EwllUserBundle::BUNDLE_NAME,
+                ['link' => $recoveringLink]
+            );
             $this->mailer->createForUser($user, $template);
             $this->defaultDbClient->commit();
+            $this->logger->info('Recovering has initialised', ['userId' => $user->id, 'ip' => $ip]);
+        } catch (ActiveTokenExistsException|Exception $e) {
+            $this->defaultDbClient->rollback();
+
+            throw $e;
+        }
+    }
+
+    public function recover(Token $token, string $pass, string $ip)
+    {
+        $userRepository = $this->repositoryProvider->get(User::class);
+        /** @var User $user */
+        $user = $userRepository->findById($token->data['userId']);
+        $user->pass = $this->encodePassword($pass);
+        try {
+            $this->defaultDbClient->beginTransaction();
+            $userRepository->update($user, ['pass']);
+            $this->tokenProvider->toUse($token);
+            $this->defaultDbClient->commit();
+            $this->logger->info('Pass recovered', ['userId' => $user->id, 'ip' => $ip]);
         } catch (Exception $e) {
             $this->defaultDbClient->rollback();
 
@@ -135,10 +157,15 @@ class Authenticator
         }
     }
 
-    public function exit()
+    public function exit(string $ip)
     {
-        //@TODO drop db session
         $this->setSessionCookie('', -3600);
+        try {
+            $user = $this->getUser();
+            $this->tokenProvider->toUse($user->token);
+            $this->logger->info('Success exit', ['userId' => $user->id, 'ip' => $ip]);
+        } catch (NotAuthorizedException $e) {
+        }
     }
 
     /** @throws NotAuthorizedException */
@@ -148,19 +175,24 @@ class Authenticator
             return $this->user;
         }
 
-        $sessionKey = $this->requestStack->getCurrentRequest()->cookies->get(self::SESSION_COOKIE_NAME);
-        if (null === $sessionKey) {
-            throw new NotAuthorizedException();
-        }
+        try {
+            $tokenCode = $this->requestStack->getCurrentRequest()->cookies->get(self::SESSION_COOKIE_NAME);
+            if (null === $tokenCode) {
+                throw new NotAuthorizedException('Token cookie missed');
+            }
 
-        /** @var UserSession|null $userSession */
-        $userSession = $this->repositoryProvider->get(UserSession::class)->findOneBy(['crypt' => $sessionKey]);
-        if ($userSession === null) {
-            throw new NotAuthorizedException();
-        }
+            try {
+                $token = $this->tokenProvider->getByCode($tokenCode, UserSessionToken::TYPE_ID);
+            } catch (TokenNotFoundException $e) {
+                throw new NotAuthorizedException('Token not found');
+            }
+        } catch (NotAuthorizedException $e) {
+            $this->logger->warning("NotAuthorizedException: {$e->getMessage()}");
 
-        $this->user = $this->repositoryProvider->get(User::class)->findById($userSession->userId);
-        $this->user->session = $userSession;
+            throw $e;
+        }
+        $this->user = $this->repositoryProvider->get(User::class)->findById($token->data['userId']);
+        $this->user->token = $token;
 
         return $this->user;
     }
@@ -173,29 +205,20 @@ class Authenticator
     }
 
     /** @throws CannotConfirmEmailException */
-    public function confirmEmail(string $code)
+    public function confirmEmail(string $tokenCode)
     {
-        /** @var User|null $user */
-        $user = $this->repositoryProvider->get(User::class)->findOneBy(['emailConfirmationCode' => $code]);
-        if ($user === null) {
+        try {
+            $token = $this->tokenProvider->getByCode($tokenCode, ConfirmEmailToken::TYPE_ID);
+        } catch (TokenNotFoundException $e) {
             throw new CannotConfirmEmailException();
         }
-        $user->isEmailConfirmed = true;
-        $user->emailConfirmationCode = null;
-        $this->repositoryProvider->get(User::class)->update($user, ['isEmailConfirmed', 'emailConfirmationCode']);
-    }
-
-    public function recover(UserRecovery $userRecovery, string $pass)
-    {
-        $userRepository = $this->repositoryProvider->get(User::class);
         /** @var User $user */
-        $user = $userRepository->findById($userRecovery->userId);
-        $user->pass = $this->encodePassword($pass);
-        $userRecovery->isUsed = true;
+        $user = $this->repositoryProvider->get(User::class)->findById($token->data['userId']);
+        $user->isEmailConfirmed = true;
+        $this->defaultDbClient->beginTransaction();
         try {
-            $this->defaultDbClient->beginTransaction();
-            $userRepository->update($user, ['pass']);
-            $this->repositoryProvider->get(UserRecovery::class)->update($userRecovery, ['isUsed']);
+            $this->repositoryProvider->get(User::class)->update($user, ['isEmailConfirmed']);
+            $this->tokenProvider->toUse($token);
             $this->defaultDbClient->commit();
         } catch (Exception $e) {
             $this->defaultDbClient->rollback();
@@ -204,6 +227,7 @@ class Authenticator
         }
     }
 
+    /** @deprecated */
     public function getRedirectUrlAfterLogin(User $user)
     {
         return $user->hasTwofa() ? '/private' : '/2fa';

@@ -12,6 +12,7 @@
   "require": {
     "php": "^7.3",
     "ext-json": "*",
+    "ext-gd": "*",
     "symfony/form": "^4.3",
     "symfony/validator": "^4.3",
     "symfony/framework-bundle": "^4.3",
@@ -19,7 +20,9 @@
     "ewll/db-bundle": "^2.11",
     "ewll/mailer-bundle": "^1.1",
     "guzzlehttp/guzzle": "^6.3",
-    "google/apiclient": "^2.4"
+    "google/apiclient": "^2.4",
+    "vkcom/vk-php-sdk": "^5.101",
+    "facebook/graph-sdk": "^5.7",
   },
   "autoload": {
     "psr-4": {

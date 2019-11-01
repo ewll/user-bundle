@@ -7,6 +7,8 @@ class TwofaCode
     const ACTION_ID_ENROLL = 1;
     const ACTION_ID_LOGIN = 2;
 
+    const LIFE_TIME_MINUTES = 1;
+
     /** @Db\BigIntType */
     public $id;
     /** @Db\BigIntType */
@@ -19,8 +21,6 @@ class TwofaCode
     public $contact;
     /** @Db\VarcharType(length = 6) */
     public $code;
-    /** @Db\BoolType */
-    public $isUsed = 0;
     /** @Db\TimestampType */
     public $createdTs;
 

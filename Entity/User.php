@@ -19,8 +19,6 @@ class User
     public $ip;
     /** @Db\VarcharType(30) */
     public $timezone = 'Atlantic/Reykjavik';
-    /** @Db\VarcharType(length = 64) */
-    public $emailConfirmationCode;
     /** @Db\BoolType */
     public $isEmailConfirmed;
     /** @Db\JsonType */
@@ -28,17 +26,16 @@ class User
     /** @Db\TimestampType */
     public $createdTs;
 
-    /** @var UserSession|null */
-    public $session;
+    /** @var Token|null */
+    public $token;
 
-    public static function create($email, $pass, $ip, $isEmailConfirmed, $emailConfirmationCode = null): self
+    public static function create($email, $pass, $ip, $isEmailConfirmed): self
     {
         $item = new self();
         $item->email = $email;
         $item->pass = $pass;
         $item->ip = $ip;
         $item->isEmailConfirmed = $isEmailConfirmed;
-        $item->emailConfirmationCode = $emailConfirmationCode;
 
         return $item;
     }

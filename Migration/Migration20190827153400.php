@@ -6,7 +6,7 @@ class Migration20190827153400 implements MigrationInterface
 {
     public function getDescription(): string
     {
-        return 'user, userSession, userRecovery';
+        return 'user, twofaCode, token';
     }
 
     public function up(): string
@@ -20,7 +20,6 @@ CREATE TABLE `user` (
     `twofaData` VARCHAR(256) NULL,
     `ip` VARCHAR(39) NOT NULL,
     `timezone` VARCHAR (30) NOT NULL DEFAULT 'Atlantic/Reykjavik',
-    `emailConfirmationCode` VARCHAR (64) NULL,
     `isEmailConfirmed` TINYINT(3) UNSIGNED NOT NULL,
     `accessRights` TEXT NOT NULL DEFAULT '[]',
     `createdTs` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -30,30 +29,6 @@ CREATE TABLE `user` (
     UNIQUE INDEX `emailConfirmationCode` (`emailConfirmationCode`)
 )COLLATE='utf8mb4_general_ci' ENGINE=InnoDB;
 
-CREATE TABLE `userSession` (
-    `id` BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
-    `userId` INT(20) UNSIGNED NOT NULL,
-    `crypt` VARCHAR(64) NOT NULL,
-    `token` VARCHAR(64) NOT NULL,
-    `ip` VARCHAR(39) NOT NULL,
-    `lastActionTs` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `createdTs` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (`id`),
-    UNIQUE INDEX `crypt` (`crypt`)
-)COLLATE='utf8mb4_general_ci' ENGINE=InnoDB;
-
-CREATE TABLE `userRecovery` (
-    `id` BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
-    `userId` BIGINT(20) UNSIGNED NOT NULL,
-    `code` VARCHAR(64) NOT NULL,
-    `ip` VARCHAR(39) NOT NULL,
-    `isUsed` TINYINT(3) UNSIGNED NOT NULL,
-    `createdTs` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (`id`),
-    INDEX `userId` (`userId`),
-    UNIQUE INDEX `code` (`code`)
-)COLLATE='utf8mb4_general_ci' ENGINE=InnoDB;
-
 CREATE TABLE `twofaCode` (
     `id` BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
     `userId` BIGINT(20) UNSIGNED NOT NULL,
@@ -61,23 +36,24 @@ CREATE TABLE `twofaCode` (
     `actionId` TINYINT(3) UNSIGNED NOT NULL,
     `contact` VARCHAR(64) NOT NULL,
     `code` VARCHAR(6) NOT NULL,
-    `isUsed` TINYINT(3) UNSIGNED NOT NULL,
     `createdTs` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    INDEX `userId` (`userId`),
-    INDEX `twofaTypeId` (`twofaTypeId`),
-    INDEX `actionId` (`actionId`)
+    UNIQUE INDEX `userId_actionId` (`userId`, `actionId`),
+    INDEX `twofaTypeId` (`twofaTypeId`)
 )COLLATE='utf8mb4_general_ci' ENGINE=InnoDB;
 
-CREATE TABLE `oauthToken` (
+CREATE TABLE `token` (
     `id` BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
-    `email` VARCHAR(64) NOT NULL,
-    `token` VARCHAR(64) NOT NULL,
+    `typeId` TINYINT(3) UNSIGNED NOT NULL,
+    `actionHash` VARCHAR(32) NOT NULL,
+    `data` VARCHAR(512) NOT NULL,
     `ip` VARCHAR(39) NOT NULL,
+    `expirationTs` TIMESTAMP NOT NULL,
     `createdTs` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    INDEX `email` (`email`),
-    UNIQUE INDEX `token` (`token`)
+    INDEX `typeId` (`typeId`),
+    INDEX `actionHash` (`actionHash`),
+    INDEX `expirationTs` (`expirationTs`)
 )COLLATE='utf8mb4_general_ci' ENGINE=InnoDB;
 SQL;
     }
@@ -85,10 +61,8 @@ SQL;
     public function down(): string
     {
         return <<<SQL
-DROP TABLE `oauthToken`;
+DROP TABLE `token`;
 DROP TABLE `twofaCode`;
-DROP TABLE `userRecovery`;
-DROP TABLE `userSession`;
 DROP TABLE `user`;
 SQL;
     }

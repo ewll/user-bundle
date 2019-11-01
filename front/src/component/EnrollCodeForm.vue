@@ -37,6 +37,7 @@
                 this.success = false;
                 this.successMsg = '';
                 this.form.data.type = 'telegram';
+                this.form.data.token = this.config.tokenCode;
                 Main.default.request(this.$http, this.$snack, 'post', '/2fa/enroll-code', this.form, function () {
                     this.success = true;
                     this.successMsg = 'Отправлено';

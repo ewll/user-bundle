@@ -27,7 +27,7 @@ class CsrfTokenValidator extends ConstraintValidator
         try {
             $user = $this->authenticator->getUser();
             $request = $this->requestStack->getCurrentRequest();
-            if ($request->request->get('_token') !== $user->session->token) {
+            if ($request->request->get('_token') !== $user->token->data['csrf']) {
                 $message = $constraint->messages[CsrfToken::CODE_CSRF_NOT_VALID];
                 $parameters = [CsrfToken::MESSAGE_PARAMETER_KEY_CODE => CsrfToken::CODE_CSRF_NOT_VALID];
                 $this->context->buildViolation($message, $parameters)->addViolation();

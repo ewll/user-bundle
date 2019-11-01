@@ -1,7 +1,7 @@
 login.page:
-  path: /login/{code}
+  path: /login/{tokenCode}
   controller: Ewll\UserBundle\Controller\UserController::loginPage
-  defaults: {code: null}
+  defaults: {tokenCode: null}
   methods: [GET]
 login:
   path: /login
@@ -15,17 +15,21 @@ oauth.signup:
   path: /oauth/signup
   controller: Ewll\UserBundle\Controller\OauthController::signup
   methods: [POST]
-oauth.login:
-  path: /oauth/login
-  controller: Ewll\UserBundle\Controller\OauthController::login
-  methods: [POST]
+#oauth.login:
+#  path: /oauth/login
+#  controller: Ewll\UserBundle\Controller\OauthController::login
+#  methods: [POST]
 signupPage:
   path: /signup
   controller: Ewll\UserBundle\Controller\UserController::signupPage
   methods: [GET]
-twofa.page:
-  path: /2fa
+twofa.page.set:
+  path: /2fa/{tokenCode}
   controller: Ewll\UserBundle\Controller\TwofaController::page
+  methods: [GET]
+twofa.page.login-confirm:
+  path: /2fa/login/{tokenCode}
+  controller: Ewll\UserBundle\Controller\TwofaController::loginConfirmPage
   methods: [GET]
 twofa.enroll.code:
   path: /2fa/enroll-code
@@ -39,10 +43,14 @@ twofa.login.code:
   path: /2fa/login/code
   controller: Ewll\UserBundle\Controller\TwofaController::loginCode
   methods: [POST]
-twofa.oauth.code:
-  path: /2fa/oauth/code
-  controller: Ewll\UserBundle\Controller\TwofaController::oauthCode
+twofa.login:
+  path: /2fa/login
+  controller: Ewll\UserBundle\Controller\TwofaController::login
   methods: [POST]
+#twofa.oauth.code:
+#  path: /2fa/oauth/code
+#  controller: Ewll\UserBundle\Controller\TwofaController::oauthCode
+#  methods: [POST]
 signup:
   path: /signup
   controller: Ewll\UserBundle\Controller\UserController::signup
@@ -56,13 +64,17 @@ passwordRecovering.init:
   controller: Ewll\UserBundle\Controller\UserController::passwordRecoveringInit
   methods: [POST]
 passwordRecovering.finishPage:
-  path: /password-recovering/{code}
+  path: /password-recovering/{tokenCode}
   controller: Ewll\UserBundle\Controller\UserController::passwordRecoveringFinishPage
   methods: [GET]
 passwordRecovering.recover:
-  path: /password-recovering/recover/{code}
+  path: /password-recovering/recover
   controller: Ewll\UserBundle\Controller\UserController::passwordRecoveringRecover
   methods: [POST]
+captcha:
+  path: /captcha
+  controller: Ewll\UserBundle\Controller\CaptchaController::captcha
+  methods: [GET]
 exit:
   path: /exit
   controller: Ewll\UserBundle\Controller\UserController::exit

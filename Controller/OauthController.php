@@ -2,20 +2,20 @@
 
 use Ewll\DBBundle\Repository\RepositoryProvider;
 use Ewll\UserBundle\Authenticator\Authenticator;
-use Ewll\UserBundle\Entity\OauthToken;
-use Ewll\UserBundle\Entity\TwofaCode;
+use Ewll\UserBundle\Entity\Token;
 use Ewll\UserBundle\Entity\User;
 use Ewll\UserBundle\Form\FormErrorResponse;
+use Ewll\UserBundle\Oauth\Exception\EmailNotReceivedException;
 use Ewll\UserBundle\Oauth\Exception\WrongCodeException;
 use Ewll\UserBundle\Oauth\OauthInterface;
 use Ewll\UserBundle\PageDataCompiler;
-use Ewll\UserBundle\Twofa\Exception\EmptyTwofaCodeException;
-use Ewll\UserBundle\Twofa\Exception\IncorrectTwofaCodeException;
-use Ewll\UserBundle\Twofa\StoredKeyTwofaInterface;
+use Ewll\UserBundle\Token\Item as TokenItem;
+use Ewll\UserBundle\Token\Item\OAuthRegToken;
+use Ewll\UserBundle\Token\TokenProvider;
 use Ewll\UserBundle\Twofa\TwofaHandler;
 use RuntimeException;
+use Symfony\Bridge\Monolog\Logger;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\Form\FormError;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -32,7 +32,9 @@ class OauthController extends AbstractController
     private $repositoryProvider;
     private $authenticator;
     private $twofaHandler;
+    private $tokenProvider;
     private $translator;
+    private $logger;
     private $domain;
 
     public function __construct(
@@ -41,7 +43,9 @@ class OauthController extends AbstractController
         RepositoryProvider $repositoryProvider,
         Authenticator $authenticator,
         TwofaHandler $twofaHandler,
+        TokenProvider $tokenProvider,
         TranslatorInterface $translator,
+        Logger $logger,
         string $domain
     ) {
         $this->oauths = $oauths;
@@ -49,7 +53,9 @@ class OauthController extends AbstractController
         $this->repositoryProvider = $repositoryProvider;
         $this->authenticator = $authenticator;
         $this->twofaHandler = $twofaHandler;
+        $this->tokenProvider = $tokenProvider;
         $this->translator = $translator;
+        $this->logger = $logger;
         $this->domain = $domain;
     }
 
@@ -61,36 +67,30 @@ class OauthController extends AbstractController
         }
         $jsConfig = [
             'isCodeWrong' => false,
-            'isUserExists' => false,
-            'hasTwofa' => false,
-            'twofaActionId' => null,
-            'isStoredTwofaCode' => false
+            'isEmailNotReceived' => false,
+            'tokenCode' => null,
         ];
         $oauth = $this->getOauthServiceByName($name);
         try {
             $email = $oauth->getEmailByCode($code);
-            $token = hash('sha256', microtime() . $email . uniqid());
-            $oauthToken = OauthToken::create($email, $token, $request->getClientIp());
-            $this->repositoryProvider->get(OauthToken::class)->create($oauthToken);
-            $jsConfig['oauthToken'] = $oauthToken->token;
             /** @var User|null $user */
             $user = $this->repositoryProvider->get(User::class)->findOneBy(['email' => $email]);
-            if (null !== $user) {
-                $jsConfig['isUserExists'] = true;
-                if ($user->hasTwofa()) {
-                    $jsConfig['hasTwofa'] = true;
-                    $jsConfig['twofaTypeId'] = $user->twofaTypeId;
-                    $twofa = $this->twofaHandler->getTwofaServiceByTypeId($user->twofaTypeId);
-                    $jsConfig['isStoredTwofaCode'] = $twofa instanceof StoredKeyTwofaInterface;
-                } else {
-                    $this->authenticator->login($user, $request->getClientIp());
-                    $redirect = $this->authenticator->getRedirectUrlAfterLogin($user);
+            if (null === $user) {
+                $tokenData = ['email' => $email];
+                $token = $this->tokenProvider->generate(OAuthRegToken::class, $tokenData, $request->getClientIp());
+                $jsConfig['tokenCode'] = $this->tokenProvider->compileTokenCode($token);
+            } else {
+                $tokenData = ['userId' => $user->id];
+                $tokenItemClass = $user->hasTwofa() ? TokenItem\AuthToken::class : TokenItem\TwofaSetToken::class;
+                $token = $this->tokenProvider->generate($tokenItemClass, $tokenData, $request->getClientIp());
+                $redirectUrl = $this->tokenProvider->compileTokenPageUrl($token);
 
-                    return $this->redirect($redirect);
-                }
+                return $this->redirect($redirectUrl);
             }
         } catch (WrongCodeException $e) {
             $jsConfig['isCodeWrong'] = true;
+        } catch (EmailNotReceivedException $e) {
+            $jsConfig['isEmailNotReceived'] = true;
         }
 
         return $this->pageDataCompiler->getPage(PageDataCompiler::PAGE_NAME_OAUTH, $jsConfig);
@@ -102,46 +102,16 @@ class OauthController extends AbstractController
             ->makeAndSubmitAuthForm($request, PageDataCompiler::FORM_AUTH_TYPE_OAUTH_SIGNUP);
         if ($form->isValid()) {
             $data = $form->getData();
-            /** @var OauthToken $oauthToken */
-            $oauthToken = $data['token'];
+            /** @var Token $token */
+            $token = $data['token'];
             $pass = $data['pass'];
-            $user = $this->authenticator->signupByOauth($oauthToken, $pass, $request->getClientIp());
-            $this->authenticator->login($user, $request->getClientIp());
-            $redirect = $this->authenticator->getRedirectUrlAfterLogin($user);
+            $user = $this->authenticator->signupByOauth($token, $pass, $request->getClientIp());
+            $tokenData = ['userId' => $user->id];
+            $tokenItemClass = $user->hasTwofa() ? TokenItem\AuthToken::class : TokenItem\TwofaSetToken::class;
+            $token = $this->tokenProvider->generate($tokenItemClass, $tokenData, $request->getClientIp());
+            $redirectUrl = $this->tokenProvider->compileTokenPageUrl($token);
 
-            return new JsonResponse(['redirect' => $redirect]);
-        }
-
-        return new FormErrorResponse($form);
-    }
-
-    public function login(Request $request)
-    {
-        $form = $this->pageDataCompiler
-            ->makeAndSubmitAuthForm($request, PageDataCompiler::FORM_AUTH_TYPE_OAUTH_LOGIN);
-
-        if ($form->isValid()) {
-            $data = $form->getData();
-            /** @var OauthToken $oauthToken */
-            $oauthToken = $data['token'];
-            /** @var User|null $user */
-            $user = $this->repositoryProvider->get(User::class)->findOneBy(['email' => $oauthToken->email]);
-            if (!$user->hasTwofa()) {
-                throw new RuntimeException('Twofa must be here');
-            }
-            try {
-                $this->twofaHandler->checkCode($user, $form, TwofaCode::ACTION_ID_LOGIN);
-                $this->authenticator->login($user, $request->getClientIp());
-                $redirect = $this->authenticator->getRedirectUrlAfterLogin($user);
-
-                return new JsonResponse(['redirect' => $redirect]);
-            } catch (EmptyTwofaCodeException $e) {
-                $message = $this->translator->trans('twofa.code.empty', [], 'validators');
-                $form->get('twofaCode')->addError(new FormError($message, null, [], null, $e));
-            } catch (IncorrectTwofaCodeException $e) {
-                $message = $this->translator->trans('twofa.code.incorrect', [], 'validators');
-                $form->get('twofaCode')->addError(new FormError($message, null, [], null, $e));
-            }
+            return new JsonResponse(['redirect' => $redirectUrl]);
         }
 
         return new FormErrorResponse($form);

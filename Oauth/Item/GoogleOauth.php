@@ -1,6 +1,7 @@
 <?php namespace Ewll\UserBundle\Oauth\Item;
 
 use Ewll\UserBundle\Oauth\AbstractOauth;
+use Ewll\UserBundle\Oauth\Exception\EmailNotReceivedException;
 use Ewll\UserBundle\Oauth\Exception\WrongCodeException;
 use Google_Client;
 use Google_Service_Oauth2;
@@ -36,7 +37,10 @@ class GoogleOauth extends AbstractOauth
         $client->setAccessToken($token['access_token']);
         $google_oauth = new Google_Service_Oauth2($client);
         $google_account_info = $google_oauth->userinfo->get();
-        $email =  $google_account_info->email;
+        if (empty($google_account_info->email)) {
+            throw new EmailNotReceivedException();
+        }
+        $email = $google_account_info->email;
 
         return $email;
     }

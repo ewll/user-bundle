@@ -1,6 +1,7 @@
 <?php namespace Ewll\UserBundle\Form;
 
 use Ewll\UserBundle\Form\Constraints\CsrfToken;
+use Ewll\UserBundle\Form\Constraints\Twofa;
 use Ewll\UserBundle\Twofa\Exception\IncorrectTwofaCodeException;
 use LogicException;
 use Symfony\Component\Form\FormInterface;
@@ -22,22 +23,24 @@ class FormErrorResponse extends JsonResponse
         foreach ($errors as $error) {
             $cause = $error->getCause();
             if (null !== $cause) {
-                if ($cause instanceof IncorrectTwofaCodeException) {
-                    $code = Response::HTTP_PRECONDITION_FAILED;
-                    $data['twofa'] = ['isStoredCode' => $cause->isStoredKey(), 'actionId' => $cause->getActionId()];
-                } else {
-                    $constraint = $error->getCause()->getConstraint();
-                    if ($constraint instanceof CsrfToken) {
-                        $code = $error->getMessageParameters()[CsrfToken::MESSAGE_PARAMETER_KEY_CODE];
-                        switch ($code) {
-                            case CsrfToken::CODE_NOT_AUTHORIZED:
-                                $code = Response::HTTP_UNAUTHORIZED;
-                                break;
-                            case CsrfToken::CODE_CSRF_NOT_VALID:
-                                $code = Response::HTTP_FORBIDDEN;
-                                break;
-                        }
+                $constraint = $error->getCause()->getConstraint();
+                $messageParameters = $error->getMessageParameters();
+                if ($constraint instanceof CsrfToken) {
+                    $csrfCode = $messageParameters[CsrfToken::MESSAGE_PARAMETER_KEY_CODE];
+                    switch ($csrfCode) {
+                        case CsrfToken::CODE_NOT_AUTHORIZED:
+                            $code = Response::HTTP_UNAUTHORIZED;
+                            break;
+                        case CsrfToken::CODE_CSRF_NOT_VALID:
+                            $code = Response::HTTP_FORBIDDEN;
+                            break;
                     }
+                } elseif ($constraint instanceof Twofa) {
+                    $code = Response::HTTP_PRECONDITION_FAILED;
+                    $data['twofa'] = [
+                        'isStoredCode' => $messageParameters['isStoredKey'],
+                        'actionId' => $messageParameters['actionId']
+                    ];
                 }
             }
             $view[$error->getOrigin()->getName()] = $error->getMessage();

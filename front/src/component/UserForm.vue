@@ -1,7 +1,7 @@
 <template>
     <div>
         <slot name="pre"></slot>
-        <v-card v-if="showForm" class="elevation-12">
+        <v-card v-if="showForm" class="elevation-12" style="min-width: 250px">
             <v-form @submit.prevent="submit">
                 <v-toolbar dark color="primary">
                     <v-toolbar-title>{{title}}</v-toolbar-title>
@@ -35,6 +35,7 @@
             url: String,
             success: Function,
             twofaError: Function,
+            error: Function,
             showForm: {type: Boolean, default: true},
             addFormData: {
                 type: Object,
@@ -42,16 +43,10 @@
                     return {};
                 }
             },
-            // showTwofaCode: {type: Boolean, default: false},
-            // twofaActionId: {type: Number, default: null},
-            // isStoredTwofaCode: {type: Boolean, default: false},
-            // codeFormAddDataKeys: {type: Array, default: function(){return []}},
-            // codeFormUrl: {type: String, default: null}
         },
         data: () => ({
             config: config,
             form: null,
-            // isContentDisabled: false,
         }),
         created() {
             this.form = Main.default.initForm();
@@ -90,10 +85,9 @@
                 }.bind(this), {
                     twofaFunc: function (response) {
                         this.$emit('twofaError', response);
-                        // this.isContentDisabled = true;
-                        // this.isStoredTwofaCode = response.body.data.twofa.isStoredCode;
-                        // this.twofaActionId = response.body.data.twofa.actionId;
-                        // this.showTwofaCode = true;
+                    }.bind(this),
+                    errorFunc: function (response) {
+                        this.$emit('error', response);
                     }.bind(this),
                 });
             },

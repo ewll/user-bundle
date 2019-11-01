@@ -14,7 +14,6 @@ use Ewll\UserBundle\Twofa\Exception\IncorrectTwofaCodeException;
 use Exception;
 use RuntimeException;
 use Symfony\Bridge\Monolog\Logger;
-use Symfony\Component\Form\FormInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 class TwofaHandler
@@ -49,7 +48,6 @@ class TwofaHandler
         /** @var TwofaCodeRepository $twofaCodeRepository */
         $twofaCodeRepository = $this->repositoryProvider->get(TwofaCode::class);
         $activeTwofaCode = $twofaCodeRepository->findActive($user->id, $actionId);
-        //@todo race condition
         if (null !== $activeTwofaCode) {
             throw new CannotProvideCodeException('Have active code', CannotProvideCodeException::CODE_HAVE_ACTIVE);
         }
@@ -63,13 +61,17 @@ class TwofaHandler
             $twofaCodeRepository->create($twofaCode);
             $twofa->sendMessage($contact, $message);
             $this->defaultDbClient->commit();
+            $this->logger->info(
+                "TwofaCode #{$twofaCode->id} provided",
+                ['type' => $twofa->getType(), 'contact' => $contact, 'userId' => $twofaCode->userId,]
+            );
         } catch (Exception $e) {
             $this->defaultDbClient->rollback();
             $code = 0;
             if ($e instanceof CannotSendMessageException) {
                 $this->logger->crit(
-                    'Cannot send twofa code.',
-                    ['type' => $twofa->getType(), 'contact' => $contact, 'message' => $e->getMessage()]
+                    "CannotSendMessageException: {$e->getMessage()}",
+                    ['type' => $twofa->getType(), 'contact' => $contact, 'userId' => $twofaCode->userId,]
                 );
                 if ($e->getCode() === CannotSendMessageException::CODE_RECIPIENT_NOT_EXISTS) {
                     $code = CannotProvideCodeException::CODE_RECIPIENT_NOT_EXISTS;
@@ -104,8 +106,7 @@ class TwofaHandler
                 if (null === $activeTwofaCode || $activeTwofaCode->code !== $code) {
                     throw new IncorrectTwofaCodeException($isStoredKey, $actionId);
                 }
-                $activeTwofaCode->isUsed = true;
-                $twofaCodeRepository->update($activeTwofaCode, ['isUsed']);
+                $twofaCodeRepository->delete($activeTwofaCode, true);
                 $data = ['contact' => $activeTwofaCode->contact];
             } elseif ($twofa instanceof CheckKeyOnTheFlyTwofaInterface) {
                 $data = $twofa->compileDataFromContext($context);
@@ -120,40 +121,55 @@ class TwofaHandler
             $user->twofaData = $data;
             $this->repositoryProvider->get(User::class)->update($user, ['twofaTypeId', 'twofaData']);
             $this->defaultDbClient->commit();
+            $this->logger->info(
+                "Twofa has set",
+                ['type' => $twofa->getType(), 'userId' => $user->id,]
+            );
         } catch (Exception|EmptyTwofaCodeException|IncorrectTwofaCodeException $e) {
             $this->defaultDbClient->rollback();
+            $this->logger->warning(
+                "Cannot set twofa: {$e->getMessage()}",
+                ['type' => $twofa->getType(), 'userId' => $user->id,]
+            );
 
             throw $e;
         }
     }
 
-    /**
-     * @throws EmptyTwofaCodeException
-     * @throws IncorrectTwofaCodeException
-     */
-    public function checkCode(User $user, FormInterface $form, int $actionId): void
+    /** @throws IncorrectTwofaCodeException */
+    public function checkAndDeactivateCode(TwofaInterface $twofa, User $user, string $code, int $actionId): void
     {
-        $code = $form->getData()['twofaCode'] ?? null;
-        $twofa = $this->getTwofaServiceByTypeId($user->twofaTypeId);
-        $isStoredKey = $twofa instanceof StoredKeyTwofaInterface;
-        if (empty($code)) {
-            throw new EmptyTwofaCodeException($isStoredKey, $actionId);
-        }
-        /** @var TwofaCodeRepository $twofaCodeRepository */
-        $twofaCodeRepository = $this->repositoryProvider->get(TwofaCode::class);
-        if ($twofa instanceof StoredKeyTwofaInterface) {
-            $activeTwofaCode = $twofaCodeRepository->findActive($user->id, $actionId, true);
-            if (null === $activeTwofaCode || $activeTwofaCode->code !== $code) {
-                throw new IncorrectTwofaCodeException($isStoredKey, $actionId);
+        try {
+            /** @var TwofaCodeRepository $twofaCodeRepository */
+            $twofaCodeRepository = $this->repositoryProvider->get(TwofaCode::class);
+            if ($twofa instanceof StoredKeyTwofaInterface) {
+                $activeTwofaCode = $twofaCodeRepository->findActive($user->id, $actionId, true);
+                if (null === $activeTwofaCode || $activeTwofaCode->code !== $code) {
+                    throw new IncorrectTwofaCodeException();
+                }
+                $twofaCodeRepository->delete($activeTwofaCode, true);
+                $this->logger->info(
+                    "Successful TwofaCode checking",
+                    ['type' => $twofa->getType(), 'userId' => $user->id,]
+                );
+            } elseif ($twofa instanceof CheckKeyOnTheFlyTwofaInterface) {
+                if (!$twofa->isCodeCorrect($user->twofaData, $code)) {
+                    throw new IncorrectTwofaCodeException();
+                }
+                $this->logger->info(
+                    "Successful TwofaCode checking",
+                    ['type' => $twofa->getType(), 'userId' => $user->id,]
+                );
+            } else {
+                throw new RuntimeException('Unknown twofa type');
             }
-            $activeTwofaCode->isUsed = true;
-            $twofaCodeRepository->update($activeTwofaCode, ['isUsed']);
-        } elseif ($twofa instanceof CheckKeyOnTheFlyTwofaInterface) {
-            if (!$twofa->isCodeCorrect($user->twofaData, $code)) {
-                throw new IncorrectTwofaCodeException($isStoredKey, $actionId);
-            }
-        } else {
-            throw new RuntimeException('Unknown twofa type');
+        } catch (IncorrectTwofaCodeException $e) {
+            $this->logger->warning(
+                "IncorrectTwofaCodeException: {$e->getMessage()}",
+                ['type' => $twofa->getType(), 'userId' => $user->id,]
+            );
+
+            throw $e;
         }
     }
 

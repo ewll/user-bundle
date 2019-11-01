@@ -1,6 +1,6 @@
 <template>
-    <user-form title="Восстановление пароля"
-               submitText="Применить" :url="'/password-recovering/recover/'+config.recoveryCode"
+    <user-form title="Восстановление пароля" :addFormData="addFormData"
+               submitText="Применить" url="/password-recovering/recover"
                @success="success" :showForm="config.isUserRecoveryFound&&showForm">
         <template v-slot:default="slotProps">
             <pass-field :form="slotProps.form" label="Новый пароль"/>
@@ -43,6 +43,7 @@
             config: config,
             showForm: true,
             showSuccess: false,
+            addFormData: {token: config.tokenCode},
         }),
         methods: {
             success() {

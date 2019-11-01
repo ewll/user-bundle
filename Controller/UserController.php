@@ -4,21 +4,21 @@ use Ewll\DBBundle\Repository\RepositoryProvider;
 use Ewll\UserBundle\Authenticator\Authenticator;
 use Ewll\UserBundle\Authenticator\Exception\CannotConfirmEmailException;
 use Ewll\UserBundle\Authenticator\Exception\NotAuthorizedException;
-use Ewll\UserBundle\Entity\TwofaCode;
+use Ewll\UserBundle\Captcha\CaptchaProvider;
+use Ewll\UserBundle\Entity\Token;
 use Ewll\UserBundle\Entity\User;
-use Ewll\UserBundle\Entity\UserRecovery;
 use Ewll\UserBundle\Form\FormErrorResponse;
 use Ewll\UserBundle\PageDataCompiler;
-use Ewll\UserBundle\Repository\UserRecoveryRepository;
-use Ewll\UserBundle\Twofa\Exception\EmptyTwofaCodeException;
-use Ewll\UserBundle\Twofa\Exception\IncorrectTwofaCodeException;
+use Ewll\UserBundle\Token\Exception\ActiveTokenExistsException;
+use Ewll\UserBundle\Token\Exception\TokenNotFoundException;
+use Ewll\UserBundle\Token\Item as TokenItem;
+use Ewll\UserBundle\Token\Item\RecoverPassToken;
+use Ewll\UserBundle\Token\TokenProvider;
 use Ewll\UserBundle\Twofa\TwofaHandler;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\Form\Extension\Core\Type\PasswordType;
 use Symfony\Component\Form\FormError;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\Validator\Constraints;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 class UserController extends AbstractController
@@ -30,6 +30,8 @@ class UserController extends AbstractController
     private $repositoryProvider;
     private $pageDataCompiler;
     private $twofaHandler;
+    private $captchaProvider;
+    private $tokenProvider;
     private $translator;
 
     public function __construct(
@@ -37,16 +39,20 @@ class UserController extends AbstractController
         RepositoryProvider $repositoryProvider,
         PageDataCompiler $pageDataCompiler,
         TwofaHandler $twofaHandler,
+        CaptchaProvider $captchaProvider,
+        TokenProvider $tokenProvider,
         TranslatorInterface $translator
     ) {
         $this->authenticator = $authenticator;
         $this->repositoryProvider = $repositoryProvider;
         $this->pageDataCompiler = $pageDataCompiler;
         $this->twofaHandler = $twofaHandler;
+        $this->captchaProvider = $captchaProvider;
+        $this->tokenProvider = $tokenProvider;
         $this->translator = $translator;
     }
 
-    public function loginPage(string $code = null)
+    public function loginPage(string $tokenCode = null)
     {
         try {
             $this->authenticator->getUser();
@@ -56,9 +62,9 @@ class UserController extends AbstractController
         }
 
         $jsConfig = ['emailConfirmed' => false];
-        if (!empty($code)) {
+        if (!empty($tokenCode)) {
             try {
-                $this->authenticator->confirmEmail($code);
+                $this->authenticator->confirmEmail($tokenCode);
                 $jsConfig['emailConfirmed'] = true;
             } catch (CannotConfirmEmailException $e) {
             }
@@ -74,21 +80,12 @@ class UserController extends AbstractController
             $data = $form->getData();
             /** @var User $user */
             $user = $data['email'];
-            try {
-                if ($user->hasTwofa()) {
-                    $this->twofaHandler->checkCode($user, $form, TwofaCode::ACTION_ID_LOGIN);
-                }
-                $this->authenticator->login($user, $request->getClientIp());
-                $redirect = $this->authenticator->getRedirectUrlAfterLogin($user);
+            $tokenData = ['userId' => $user->id];
+            $tokenItemClass = $user->hasTwofa() ? TokenItem\AuthToken::class : TokenItem\TwofaSetToken::class;
+            $token = $this->tokenProvider->generate($tokenItemClass, $tokenData, $request->getClientIp());
+            $redirectUrl = $this->tokenProvider->compileTokenPageUrl($token);
 
-                return new JsonResponse(['redirect' => $redirect]);
-            } catch (EmptyTwofaCodeException $e) {
-                $message = $this->translator->trans('twofa.code.empty', [], 'validators');
-                $form->get('twofaCode')->addError(new FormError($message, null, [], null, $e));
-            } catch (IncorrectTwofaCodeException $e) {
-                $message = $this->translator->trans('twofa.code.incorrect', [], 'validators');
-                $form->get('twofaCode')->addError(new FormError($message, null, [], null, $e));
-            }
+            return new JsonResponse(['redirect' => $redirectUrl]);
         }
 
         return new FormErrorResponse($form);
@@ -112,38 +109,41 @@ class UserController extends AbstractController
             $data = $form->getData();
             /** @var User $user */
             $user = $data['email'];
-            $this->authenticator->recoveringInit($user, $request->getClientIp());
+            try {
+                $this->authenticator->recoveringInit($user, $request->getClientIp());
 
-            return new JsonResponse([]);
+                return new JsonResponse([]);
+            } catch (ActiveTokenExistsException $e) {
+                $error = $this->translator->trans('recovering.old-key-is-active', [], 'validators');
+                $form->addError(new FormError($error));
+            }
         }
 
         return new FormErrorResponse($form);
     }
 
-    public function passwordRecoveringFinishPage(string $code)
+    public function passwordRecoveringFinishPage(string $tokenCode)
     {
-        $userRecovery = $this->findUserRecoveryByCode($code);
-        $jsConfig = ['isUserRecoveryFound' => null !== $userRecovery, 'recoveryCode' => $code];
+        try {
+            $this->tokenProvider->getByCode($tokenCode, RecoverPassToken::TYPE_ID);
+            $isUserRecoveryFound = true;
+        } catch (TokenNotFoundException $e) {
+            $isUserRecoveryFound = false;
+        }
+        $jsConfig = ['isUserRecoveryFound' => $isUserRecoveryFound, 'tokenCode' => $tokenCode];
 
         return $this->pageDataCompiler->getPage(PageDataCompiler::PAGE_NAME_FINISH_RECOVERING, $jsConfig);
     }
 
-    public function passwordRecoveringRecover(Request $request, string $code)
+    public function passwordRecoveringRecover(Request $request)
     {
-        $formBuilder = $this
-            ->createFormBuilder()
-            ->add('pass', PasswordType::class, [
-                'constraints' => [new Constraints\NotBlank(), new Constraints\Length(['min' => 6])]
-            ]);
-        $form = $formBuilder->getForm();
-        $form->submit($request->request->get('form', []));
-        $userRecovery = $this->findUserRecoveryByCode($code);
-        if (null === $userRecovery) {
-            $form->addError(new FormError('Код восстановления не найден или устарел'));
-        }
+        $form = $this->pageDataCompiler
+            ->makeAndSubmitAuthForm($request, PageDataCompiler::FORM_AUTH_TYPE_RECOVERING_FINISH);
         if ($form->isValid()) {
             $data = $form->getData();
-            $this->authenticator->recover($userRecovery, $data['pass']);
+            /** @var Token $token */
+            $token = $data['token'];
+            $this->authenticator->recover($token, $data['pass'], $request->getClientIp());
 
             return new JsonResponse([]);
         }
@@ -164,19 +164,10 @@ class UserController extends AbstractController
         return new FormErrorResponse($form);
     }
 
-    public function exit()
+    public function exit(Request $request)
     {
-        $this->authenticator->exit();
+        $this->authenticator->exit($request->getClientIp());
 
         return $this->redirect('/login');
-    }
-
-    private function findUserRecoveryByCode(string $code): ?UserRecovery
-    {
-        /** @var UserRecoveryRepository $userRecoveryRepository */
-        $userRecoveryRepository = $this->repositoryProvider->get(UserRecovery::class);
-        $userRecovery = $userRecoveryRepository->findValidByCode($code);
-
-        return $userRecovery;
     }
 }

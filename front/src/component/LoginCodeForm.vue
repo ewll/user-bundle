@@ -20,6 +20,7 @@
             actionId: Number,
             isStoredCode: {type: Boolean, default: false},
             url: String,
+            token: String,
         },
         data: () => ({
             config: config,
@@ -45,8 +46,9 @@
                     let key = this.addFormDataKeys[i];
                     this.codeRequestForm.data[key] = this.form.data[key];
                 }
+                this.codeRequestForm.data.token = this.token;
                 Main.default.request(this.$http, this.$snack, 'post', this.url, this.codeRequestForm, function () {
-                    this.$snack.success({text: 'Отправлено', button: 'close'});
+                    this.$snack.success({text: 'Код отправлен'});
                     this.codeRequestForm.loading = true;
                     this.btnText = 59;
                     this.timer = setInterval(this.tick, 1000);

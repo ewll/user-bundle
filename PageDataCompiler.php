@@ -1,16 +1,17 @@
 <?php namespace Ewll\UserBundle;
 
+use Ewll\UserBundle\Entity\TwofaCode;
 use Ewll\UserBundle\Entity\User;
-use Ewll\UserBundle\Form\Constraints\ConfirmedEmail;
-use Ewll\UserBundle\Form\Constraints\OauthTokenUserExists;
-use Ewll\UserBundle\Form\Constraints\PassMatch;
-use Ewll\UserBundle\Form\Constraints\UniqueEmail;
-use Ewll\UserBundle\Form\DataTransformer\OauthTokenToEntityTransformer;
+use Ewll\UserBundle\Form\Constraints as CustomConstraints;
+use Ewll\UserBundle\Form\DataTransformer\CodeToTokenTransformer;
 use Ewll\UserBundle\Form\DataTransformer\UserToEmailTransformer;
 use Ewll\UserBundle\Oauth\OauthInterface;
+use Ewll\UserBundle\Token\Item\AuthToken;
+use Ewll\UserBundle\Token\Item\OAuthRegToken;
+use Ewll\UserBundle\Token\Item\RecoverPassToken;
+use Ewll\UserBundle\Token\Item\TwofaToken;
 use RuntimeException;
-use Symfony\Component\Form\Extension\Core\Type\PasswordType;
-use Symfony\Component\Form\Extension\Core\Type\TextType;
+use Symfony\Component\Form\Extension\Core\Type as FieldType;
 use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -26,8 +27,8 @@ class PageDataCompiler
     const FORM_AUTH_TYPE_RECOVERING_INIT = 3;
     const FORM_AUTH_TYPE_LOGIN_CODE = 4;
     const FORM_AUTH_TYPE_OAUTH_SIGNUP = 5;
-    const FORM_AUTH_TYPE_OAUTH_CODE = 6;
-    const FORM_AUTH_TYPE_OAUTH_LOGIN = 7;
+    const FORM_AUTH_TYPE_TWOFA_LOGIN = 8;
+    const FORM_AUTH_TYPE_RECOVERING_FINISH = 9;
 
     const PAGE_NAME_LOGIN = 'login';
     const PAGE_NAME_SIGNUP = 'signup';
@@ -35,12 +36,13 @@ class PageDataCompiler
     const PAGE_NAME_FINISH_RECOVERING = 'finishRecovering';
     const PAGE_NAME_TWOFA = 'twofa';
     const PAGE_NAME_OAUTH = 'oauth';
+    const PAGE_NAME_TWOFA_LOGIN_CONFIRMATION = 'twofaLoginConfirmation';
 
     private $translator;
     private $twig;
     private $formFactory;
-    private $oauthTokenToEntityTransformer;
     private $userToEmailTransformer;
+    private $codeToTokenTransformer;
     /** @var OauthInterface[] */
     private $oauths;
 
@@ -49,20 +51,20 @@ class PageDataCompiler
         TwigEnvironment $twig,
         FormFactoryInterface $formFactory,
         UserToEmailTransformer $userToEmailTransformer,
-        OauthTokenToEntityTransformer $oauthTokenToEntityTransformer,
+        CodeToTokenTransformer $codeToTokenTransformer,
         iterable $oauths
     ) {
         $this->translator = $translator;
         $this->twig = $twig;
         $this->formFactory = $formFactory;
         $this->userToEmailTransformer = $userToEmailTransformer;
-        $this->oauthTokenToEntityTransformer = $oauthTokenToEntityTransformer;
+        $this->codeToTokenTransformer = $codeToTokenTransformer;
         $this->oauths = $oauths;
     }
 
     public function getPage(string $pageName, array $jsConfig = [], User $user = null)
     {
-        $token = null === $user ? '~' : $user->session->token;
+        $token = null === $user ? '~' : $user->token->data['csrf'];
         $jsConfig['token'] = $token;
         $jsConfig['pageName'] = $pageName;
         $jsConfig['oauths'] = [];
@@ -86,72 +88,92 @@ class PageDataCompiler
         $map = [
             self::FORM_AUTH_TYPE_SIGNUP => [
                 'email' => [
-                    'type' => TextType::class,
-                    'constraints' => [new Constraints\NotBlank(), new Constraints\Email(), new UniqueEmail()],
+                    'type' => FieldType\TextType::class,
+                    'constraints' => [
+                        new Constraints\NotBlank(),
+                        new Constraints\Email(),
+                        new CustomConstraints\UniqueEmail()
+                    ],
                 ],
                 'pass' => [
-                    'type' => PasswordType::class,
+                    'type' => FieldType\PasswordType::class,
                     'constraints' => [new Constraints\NotBlank(), new Constraints\Length(['min' => 6])],
+                ],
+                'captcha' => [
+                    'type' => FieldType\IntegerType::class,
+                    'constraints' => [new CustomConstraints\Captcha(['email', 'pass'])],
                 ],
             ],
             self::FORM_AUTH_TYPE_LOGIN => [
                 'email' => [
-                    'type' => TextType::class,
-                    'constraints' => [new Constraints\NotBlank(), new ConfirmedEmail()],
-                    'transformer' => $this->userToEmailTransformer,
+                    'type' => FieldType\TextType::class,
+                    'constraints' => [new Constraints\NotBlank(), new CustomConstraints\ConfirmedEmail()],
+                    'modelTransformer' => $this->userToEmailTransformer,
                 ],
                 'pass' => [
-                    'type' => PasswordType::class,
-                    'constraints' => [new Constraints\NotBlank(), new PassMatch()],
+                    'type' => FieldType\PasswordType::class,
+                    'constraints' => [new Constraints\NotBlank(), new CustomConstraints\PassMatch()],
                 ],
-                'twofaCode' => [
-                    'type' => TextType::class,
+                'captcha' => [
+                    'type' => FieldType\IntegerType::class,
+                    'constraints' => [new CustomConstraints\Captcha(['email', 'pass'])],
                 ],
             ],
             self::FORM_AUTH_TYPE_RECOVERING_INIT => [
                 'email' => [
-                    'type' => TextType::class,
-                    'constraints' => [new Constraints\NotBlank(), new ConfirmedEmail()],
-                    'transformer' => $this->userToEmailTransformer,
+                    'type' => FieldType\TextType::class,
+                    'constraints' => [new Constraints\NotBlank(), new CustomConstraints\ConfirmedEmail()],
+                    'modelTransformer' => $this->userToEmailTransformer,
+                ],
+                'captcha' => [
+                    'type' => FieldType\IntegerType::class,
+                    'constraints' => [new CustomConstraints\Captcha(['email'])],
+                ],
+            ],
+            self::FORM_AUTH_TYPE_RECOVERING_FINISH => [
+                'pass' => [
+                    'type' => FieldType\PasswordType::class,
+                    'constraints' => [new Constraints\NotBlank(), new Constraints\Length(['min' => 6])],
+                ],
+                'token' => [
+                    'type' => FieldType\TextType::class,
+                    'constraints' => [
+                        new Constraints\NotBlank(),
+                        new CustomConstraints\TokenType(RecoverPassToken::TYPE_ID)
+                    ],
+                    'viewTransformer' => $this->codeToTokenTransformer,
                 ],
             ],
             self::FORM_AUTH_TYPE_LOGIN_CODE => [
-                'email' => [
-                    'type' => TextType::class,
-                    'constraints' => [new Constraints\NotBlank(), new ConfirmedEmail()],
-                    'transformer' => $this->userToEmailTransformer,
+                'token' => [
+                    'type' => FieldType\TextType::class,
+                    'constraints' => [new Constraints\NotBlank(), new CustomConstraints\TokenType(AuthToken::TYPE_ID)],
+                    'viewTransformer' => $this->codeToTokenTransformer,
                 ],
-                'pass' => [
-                    'type' => PasswordType::class,
-                    'constraints' => [new Constraints\NotBlank(), new PassMatch()],
+            ],
+            self::FORM_AUTH_TYPE_TWOFA_LOGIN => [
+                'token' => [
+                    'type' => FieldType\TextType::class,
+                    'constraints' => [new Constraints\NotBlank(), new CustomConstraints\TokenType(AuthToken::TYPE_ID)],
+                    'viewTransformer' => $this->codeToTokenTransformer,
+                ],
+                'twofaCode' => [
+                    'type' => FieldType\TextType::class,
+                    'constraints' => [new CustomConstraints\Twofa(TwofaCode::ACTION_ID_LOGIN)],
                 ],
             ],
             self::FORM_AUTH_TYPE_OAUTH_SIGNUP => [
                 'pass' => [
-                    'type' => PasswordType::class,
+                    'type' => FieldType\PasswordType::class,
                     'constraints' => [new Constraints\NotBlank(), new Constraints\Length(['min' => 6])],
                 ],
                 'token' => [
-                    'type' => TextType::class,
-                    'constraints' => [new Constraints\NotBlank(), new OauthTokenUserExists(false)],
-                    'transformer' => $this->oauthTokenToEntityTransformer,
-                ],
-            ],
-            self::FORM_AUTH_TYPE_OAUTH_CODE => [
-                'token' => [
-                    'type' => TextType::class,
-                    'constraints' => [new Constraints\NotBlank(), new OauthTokenUserExists(true)],
-                    'transformer' => $this->oauthTokenToEntityTransformer,
-                ],
-            ],
-            self::FORM_AUTH_TYPE_OAUTH_LOGIN => [
-                'token' => [
-                    'type' => TextType::class,
-                    'constraints' => [new Constraints\NotBlank(), new OauthTokenUserExists(true)],
-                    'transformer' => $this->oauthTokenToEntityTransformer,
-                ],
-                'twofaCode' => [
-                    'type' => TextType::class,
+                    'type' => FieldType\TextType::class,
+                    'constraints' => [
+                        new Constraints\NotBlank(),
+                        new CustomConstraints\TokenType(OAuthRegToken::TYPE_ID)
+                    ],
+                    'viewTransformer' => $this->codeToTokenTransformer,
                 ],
             ],
         ];
@@ -163,8 +185,11 @@ class PageDataCompiler
         foreach ($map[$formType] as $fieldName => $parameters) {
             $constraints = $parameters['constraints'] ?? [];
             $formBuilder->add($fieldName, $parameters['type'], ['constraints' => $constraints]);
-            if (isset($parameters['transformer'])) {
-                $formBuilder->get($fieldName)->addModelTransformer($parameters['transformer']);
+            if (isset($parameters['modelTransformer'])) {
+                $formBuilder->get($fieldName)->addModelTransformer($parameters['modelTransformer']);
+            }
+            if (isset($parameters['viewTransformer'])) {
+                $formBuilder->get($fieldName)->addViewTransformer($parameters['viewTransformer']);
             }
         }
         $form = $formBuilder->getForm();

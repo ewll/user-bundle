@@ -17,8 +17,6 @@ FROM {$this->config->tableName} $prefix
 WHERE
     userId = :userId
     AND actionId = :actionId
-    AND isUsed = 0
-    AND createdTs > ADDDATE(NOW(), INTERVAL -1 MINUTE)
 LIMIT 1
 $forUpdateQuery
 SQL
@@ -30,5 +28,21 @@ SQL
         $item = $this->hydrator->hydrateOne($this->config, $prefix, $statement, $this->getFieldTransformationOptions());
 
         return $item;
+    }
+
+    public function flush(): int
+    {
+        $lifeTimeMinutes = TwofaCode::LIFE_TIME_MINUTES;
+        $statement = $this
+            ->dbClient
+            ->prepare(<<<SQL
+DELETE FROM {$this->config->tableName} 
+WHERE createdTs < ADDDATE(NOW(), INTERVAL -$lifeTimeMinutes MINUTE)
+SQL
+            )
+            ->execute();
+        $affectedRows = $statement->affectedRows();
+
+        return $affectedRows;
     }
 }

@@ -1,13 +1,10 @@
 <template>
-    <user-form title="Вход" submitText="Войти" url="/login" @success="success" @twofaError="twofaError">
+    <user-form title="Вход" submitText="Войти" url="/login" @success="success">
         <template v-slot:default="slotProps">
             <oauth/>
-            <email-field :disabled="twofa.show" :form="slotProps.form"/>
-            <pass-field :disabled="twofa.show" :form="slotProps.form"/>
-            <login-code-form v-if="twofa.show" :form="slotProps.form" :actionId="twofa.actionId"
-                             :isStoredCode="twofa.isStored"
-                             :addFormDataKeys="['email', 'pass']" url="/2fa/login/code"
-            />
+            <email-field :form="slotProps.form"/>
+            <pass-field :form="slotProps.form"/>
+            <captcha :form="slotProps.form"/>
         </template>
         <template v-slot:actions>
             <v-btn href="/signup" text>Регистрация</v-btn>
@@ -35,24 +32,19 @@
     import EmailField from './../component/EmailField';
     import PassField from './../component/PassField';
     import Oauth from './../component/Oauth';
-    import LoginCodeForm from './../component/LoginCodeForm';
+    import Captcha from './../component/Captcha';
 
     export default {
-        components: {PassField, UserForm, EmailField, Oauth, LoginCodeForm},
+        components: {PassField, UserForm, EmailField, Oauth, Captcha},
         data: () => ({
             config: config,
-            twofa: {show: false, actionId: null, isStored: false}
         }),
         methods: {
             success(response) {
+                this.$snack.success({text: 'Переадресация'});
                 let urlParts = window.location.href.split('#');
                 let sharpParams = urlParts.length === 2 ? '#' + urlParts[1] : '';
                 window.location.href = response.body.redirect + sharpParams;
-            },
-            twofaError(response) {
-                this.twofa.isStored = response.body.data.twofa.isStoredCode;
-                this.twofa.actionId = response.body.data.twofa.actionId;
-                this.twofa.show = true;
             },
         }
     }

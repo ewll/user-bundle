@@ -9,6 +9,7 @@
                         <recovering-init-page v-else-if="config.pageName === 'initRecovering'"/>
                         <recovering-finish-page v-else-if="config.pageName === 'finishRecovering'"/>
                         <twofa-page v-else-if="config.pageName === 'twofa'"/>
+                        <twofa-login-confirm-page v-else-if="config.pageName === 'twofaLoginConfirmation'"/>
                         <oauth-page v-else-if="config.pageName === 'oauth'"/>
                     </v-flex>
                 </v-layout>
@@ -23,10 +24,19 @@
     import RecoveringInitPage from './page/RecoveringInitPage';
     import RecoveringFinishPage from './page/RecoveringFinishPage';
     import TwofaPage from './page/TwofaPage';
+    import TwofaLoginConfirmPage from './page/TwofaLoginConfirmPage';
     import OauthPage from './page/OauthPage';
 
     export default {
-        components: {LoginPage, SignupPage, RecoveringInitPage, RecoveringFinishPage, TwofaPage, OauthPage},
+        components: {
+            LoginPage,
+            SignupPage,
+            RecoveringInitPage,
+            RecoveringFinishPage,
+            TwofaPage,
+            OauthPage,
+            TwofaLoginConfirmPage
+        },
         data: () => ({
             config: config,
         }),
