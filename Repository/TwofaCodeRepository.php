@@ -7,6 +7,7 @@ class TwofaCodeRepository extends Repository
 {
     public function findActive(int $userId, int $actionId, bool $forUpdate = false): ?TwofaCode
     {
+        $lifeTimeMinutes = TwofaCode::LIFE_TIME_MINUTES;
         $forUpdateQuery = $forUpdate ? 'FOR UPDATE' : '';
         $prefix = 't1';
         $statement = $this
@@ -14,9 +15,10 @@ class TwofaCodeRepository extends Repository
             ->prepare(<<<SQL
 SELECT {$this->getSelectList($prefix)}
 FROM {$this->config->tableName} $prefix
-WHERE
+WHERE 
     userId = :userId
     AND actionId = :actionId
+    AND createdTs > ADDDATE(NOW(), INTERVAL -$lifeTimeMinutes MINUTE)
 LIMIT 1
 $forUpdateQuery
 SQL

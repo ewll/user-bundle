@@ -17,12 +17,12 @@
     "symfony/validator": "^4.3",
     "symfony/framework-bundle": "^4.3",
     "symfony/translation": "^4.3",
-    "ewll/db-bundle": "^2.11",
-    "ewll/mailer-bundle": "^1.1",
+    "ewll/db-bundle": "^2.13",
+    "ewll/mailer-bundle": "^1.2",
     "guzzlehttp/guzzle": "^6.3",
     "google/apiclient": "^2.4",
     "vkcom/vk-php-sdk": "^5.101",
-    "facebook/graph-sdk": "^5.7",
+    "facebook/graph-sdk": "^5.7"
   },
   "autoload": {
     "psr-4": {

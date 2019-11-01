@@ -212,24 +212,6 @@ class TwofaController extends AbstractController
         return new FormErrorResponse($form);
     }
 
-//    public function oauthCode(Request $request)
-//    {
-//        $form = $this->pageDataCompiler->makeAndSubmitAuthForm($request, PageDataCompiler::FORM_AUTH_TYPE_OAUTH_CODE);
-//        if ($form->isValid()) {
-//            $data = $form->getData();
-//            /** @var OauthToken $oauthToken */
-//            $oauthToken = $data['token'];
-//            /** @var User $user */
-//            $user = $this->repositoryProvider->get(User::class)->findOneBy(['email' => $oauthToken->email]);
-//            $this->provideCodeByUserAndForm($user, $form);
-//            if ($form->isValid()) {
-//                return new JsonResponse([]);
-//            }
-//        }
-//
-//        return new FormErrorResponse($form);
-//    }
-
     public function enroll(Request $request)
     {
         $formBuilder = $this->createFormBuilder()
