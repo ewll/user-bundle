@@ -26,7 +26,6 @@ CREATE TABLE `user` (
     PRIMARY KEY (`id`),
     INDEX `email_pass` (`email`, `pass`),
     UNIQUE INDEX `email` (`email`),
-    UNIQUE INDEX `emailConfirmationCode` (`emailConfirmationCode`)
 )COLLATE='utf8mb4_general_ci' ENGINE=InnoDB;
 
 CREATE TABLE `twofaCode` (
