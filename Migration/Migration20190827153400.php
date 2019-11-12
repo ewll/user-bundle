@@ -25,7 +25,7 @@ CREATE TABLE `user` (
     `createdTs` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     INDEX `email_pass` (`email`, `pass`),
-    UNIQUE INDEX `email` (`email`),
+    UNIQUE INDEX `email` (`email`)
 )COLLATE='utf8mb4_general_ci' ENGINE=InnoDB;
 
 CREATE TABLE `twofaCode` (
