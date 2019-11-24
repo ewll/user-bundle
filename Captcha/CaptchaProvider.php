@@ -87,7 +87,7 @@ class CaptchaProvider
         $image = imagecreatetruecolor($size, self::IMG_HEIGHT);
         imagealphablending($image, false);
         imagesavealpha($image, true);
-        $backgroundColor = imagecolorallocate($image, 159, 207, 255);
+        $backgroundColor = imagecolorallocate($image, 178, 223, 219);
         imagefilledrectangle($image, 0, 0, $size, self::IMG_HEIGHT, $backgroundColor);
 
         $elementsColor = imagecolorallocate($image, 255, 255, 255);

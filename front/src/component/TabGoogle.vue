@@ -5,13 +5,13 @@
                 Для настройки 2fa через google скачайте приложение Google Authenticator на свой мобильный телефон.
             </div>
             <div class="text-center" style="margin: 10px 0">
-                <v-chip class="mr-2" color="#0088cc" dark
+                <v-chip class="mr-2" color="primary" dark
                         href="https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2"
                         target="_blank">
                     <v-icon left>mdi-google-play</v-icon>
                     Play Market
                 </v-chip>
-                <v-chip class="mr-2" color="#0088cc" dark
+                <v-chip class="mr-2" color="primary" dark
                         href="https://apps.apple.com/ru/app/google-authenticator/id388497605"
                         target="_blank">
                     <v-icon left>mdi-apple</v-icon>

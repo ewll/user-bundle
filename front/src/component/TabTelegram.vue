@@ -5,7 +5,7 @@
                 Для настройки 2fa через telegram добавьте следующего бота в контакты и нажмите START.
             </div>
             <div class="text-center" style="margin: 10px 0">
-                <v-chip class="mr-2" color="#0088cc" dark
+                <v-chip class="mr-2" color="primary" dark
                         :href="'https://t.me/'+config.telegramBotName"
                         target="_blank">
                     <v-icon left>mdi-telegram</v-icon>

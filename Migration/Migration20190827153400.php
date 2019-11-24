@@ -37,7 +37,7 @@ CREATE TABLE `twofaCode` (
     `code` VARCHAR(6) NOT NULL,
     `createdTs` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    UNIQUE INDEX `userId_actionId` (`userId`, `actionId`),
+    INDEX `userId_actionId` (`userId`, `actionId`),
     INDEX `twofaTypeId` (`twofaTypeId`)
 )COLLATE='utf8mb4_general_ci' ENGINE=InnoDB;
 
