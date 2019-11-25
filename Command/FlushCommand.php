@@ -35,5 +35,7 @@ class FlushCommand extends Command
         $twofaCodesAffectedNum = $twofaCodeRepository->flush();
 
         $this->logger->info(sprintf('Flushed. Tokens: %d, TwofaCodes: %d', $tokensAffectedNum, $twofaCodesAffectedNum));
+
+        return 0;
     }
 }

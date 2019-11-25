@@ -89,6 +89,8 @@ class EditUserAccessRuleCommand extends Command
         } catch (CommandException $e) {
             $style->error($e->getMessage());
         }
+
+        return 0;
     }
 
     private function compileOutputTableRows(User $user): array
