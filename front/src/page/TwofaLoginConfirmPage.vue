@@ -3,7 +3,7 @@
                :showForm="!config.isCodeWrong" :addFormData="{token:config.tokenCode}"
     >
         <template v-slot:default="slotProps">
-            <login-code-form :form="slotProps.form" :actionId="config.twofaActionId" :token="config.tokenCode"
+            <login-code-form :form="slotProps.form" :token="config.tokenCode"
                              :isStoredCode="config.isStoredTwofaCode" url="/2fa/login/code"
             />
         </template>

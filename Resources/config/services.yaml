@@ -66,6 +66,8 @@ services:
             - '%ewll_user.telegram_bot_name%'
             - '%ewll_user.domain%'
             - '@Ewll\UserBundle\Form\DataTransformer\CodeToTokenTransformer'
+            - '@Ewll\UserBundle\Twofa\JsConfigCompiler'
+            - '%ewll_user.twofa.actions%'
 
     Ewll\UserBundle\Controller\OauthController:
         public: true
@@ -105,7 +107,10 @@ services:
         tags: ['validator.constraint_validator']
 
     Ewll\UserBundle\Form\Constraints\TwofaValidator:
-        arguments: ['@Ewll\UserBundle\Twofa\TwofaHandler', '@ewll.db.repository-provider']
+        arguments:
+            - '@Ewll\UserBundle\Twofa\TwofaHandler'
+            - '@ewll.db.repository-provider'
+            - '@Ewll\UserBundle\Authenticator\Authenticator'
         tags: ['validator.constraint_validator']
 
     Ewll\UserBundle\Form\Constraints\UserHasNoTwofaValidator:
@@ -159,6 +164,11 @@ services:
             - '@logger'
             - !tagged twofa
         tags: [{ name: monolog.logger, channel: user }]
+
+    Ewll\UserBundle\Twofa\JsConfigCompiler:
+        arguments:
+            - '@Ewll\UserBundle\Twofa\TwofaHandler'
+            - '%ewll_user.twofa.actions%'
 
     Ewll\UserBundle\Twofa\Item\TelegramTwofa:
         arguments:

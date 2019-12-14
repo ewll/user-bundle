@@ -29,6 +29,18 @@ class Configuration implements ConfigurationInterface
                         ->end()
                     ->end()
                 ->end()
+                ->arrayNode('twofa')
+                    ->children()
+                        ->arrayNode('actions')
+                            ->arrayPrototype()
+                                ->children()
+                                    ->integerNode('id')->min(100)->isRequired()->end()
+                                    ->scalarNode('name')->isRequired()->cannotBeEmpty()->end()
+                                ->end()
+                            ->end()
+                        ->end()
+                    ->end()
+                ->end()
             ->end();
 
         return $treeBuilder;

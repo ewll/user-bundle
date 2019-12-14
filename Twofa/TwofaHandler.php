@@ -4,7 +4,7 @@ use Ewll\DBBundle\DB\Client as DbClient;
 use Ewll\DBBundle\Repository\RepositoryProvider;
 use Ewll\UserBundle\Authenticator\Authenticator;
 use Ewll\UserBundle\Entity\TwofaCode;
-use Ewll\UserBundle\Entity\User;
+use App\Entity\User;
 use Ewll\UserBundle\EwllUserBundle;
 use Ewll\UserBundle\Repository\TwofaCodeRepository;
 use Ewll\UserBundle\Twofa\Exception\CannotProvideCodeException;
@@ -43,13 +43,16 @@ class TwofaHandler
     }
 
     /** @throws CannotProvideCodeException */
-    public function provideCode(User $user, StoredKeyTwofaInterface $twofa, string $contact, int $actionId)
+    public function provideCodeToContact(User $user, StoredKeyTwofaInterface $twofa, string $contact, int $actionId)
     {
         /** @var TwofaCodeRepository $twofaCodeRepository */
         $twofaCodeRepository = $this->repositoryProvider->get(TwofaCode::class);
         $activeTwofaCode = $twofaCodeRepository->findActive($user->id, $actionId);
         if (null !== $activeTwofaCode) {
-            throw new CannotProvideCodeException('Have active code', CannotProvideCodeException::CODE_HAVE_ACTIVE);
+            $code = CannotProvideCodeException::CODE_HAVE_ACTIVE;
+            $error = $this->transProvideError($code);
+
+            throw new CannotProvideCodeException($error, $code);
         }
 
         $code = random_int(100000, 999999);
@@ -67,7 +70,7 @@ class TwofaHandler
             );
         } catch (Exception $e) {
             $this->defaultDbClient->rollback();
-            $code = 0;
+            $code = CannotProvideCodeException::CODE_CANNOT_SEND;
             if ($e instanceof CannotSendMessageException) {
                 $this->logger->crit(
                     "CannotSendMessageException: {$e->getMessage()}",
@@ -77,9 +80,26 @@ class TwofaHandler
                     $code = CannotProvideCodeException::CODE_RECIPIENT_NOT_EXISTS;
                 }
             }
+            $error = $this->transProvideError($code);
 
-            throw new CannotProvideCodeException($e->getMessage(), $code, $e);
+            throw new CannotProvideCodeException($error, $code, $e);
         }
+    }
+
+    /** @throws CannotProvideCodeException */
+    public function provideCodeToUser(User $user, int $actionId)
+    {
+        if (!$user->hasTwofa()) {
+            $code = CannotProvideCodeException::CODE_USER_HAS_NO_TWOFA;
+            $error = $this->transProvideError($code);
+
+            throw new CannotProvideCodeException($error, $code);
+        }
+        $twofa = $this->getTwofaServiceByTypeId($user->twofaTypeId, true);
+        if (!$twofa instanceof StoredKeyTwofaInterface) {
+            throw new RuntimeException('Only StoredKeyTwofaInterface must be here');
+        }
+        $this->provideCodeToContact($user, $twofa, $user->twofaData['contact'], $actionId);
     }
 
     /**
@@ -90,9 +110,9 @@ class TwofaHandler
         User $user,
         TwofaInterface $twofa,
         string $code,
-        int $actionId,
         string $context = null
     ): void {
+        $actionId = TwofaCode::ACTION_ID_ENROLL;
         /** @var TwofaCodeRepository $twofaCodeRepository */
         $twofaCodeRepository = $this->repositoryProvider->get(TwofaCode::class);
         $this->defaultDbClient->beginTransaction();
@@ -185,5 +205,10 @@ class TwofaHandler
         }
 
         throw new RuntimeException('Twofa service not found');
+    }
+
+    private function transProvideError(int $code)
+    {
+        return $this->translator->trans("twofa.message.$code", [], 'validators');
     }
 }

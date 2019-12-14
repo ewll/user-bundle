@@ -5,7 +5,7 @@ use Ewll\UserBundle\AccessRule\AccessChecker;
 use Ewll\UserBundle\AccessRule\AccessRuleInterface;
 use Ewll\UserBundle\AccessRule\AccessRuleListInterface;
 use Ewll\UserBundle\AccessRule\AccessRuleProvider;
-use Ewll\UserBundle\Entity\User;
+use App\Entity\User;
 use Ewll\UserBundle\Command\Exception\AccessRuleValidationException;
 use Ewll\UserBundle\Command\Exception\CommandException;
 use Symfony\Component\Console\Command\Command;

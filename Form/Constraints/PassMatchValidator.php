@@ -1,7 +1,7 @@
 <?php namespace Ewll\UserBundle\Form\Constraints;
 
 use Ewll\UserBundle\Authenticator\Authenticator;
-use Ewll\UserBundle\Entity\User;
+use App\Entity\User;
 use Symfony\Component\Validator\Constraint;
 use Symfony\Component\Validator\ConstraintValidator;
 use Symfony\Component\Validator\Exception\UnexpectedTypeException;

@@ -3,7 +3,7 @@
 use Ewll\DBBundle\Repository\RepositoryProvider;
 use Ewll\UserBundle\Authenticator\Authenticator;
 use Ewll\UserBundle\Entity\Token;
-use Ewll\UserBundle\Entity\User;
+use App\Entity\User;
 use Ewll\UserBundle\Form\FormErrorResponse;
 use Ewll\UserBundle\Oauth\Exception\EmailNotReceivedException;
 use Ewll\UserBundle\Oauth\Exception\WrongCodeException;

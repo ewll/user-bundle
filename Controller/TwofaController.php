@@ -2,9 +2,11 @@
 
 use Ewll\DBBundle\Repository\RepositoryProvider;
 use Ewll\UserBundle\Authenticator\Authenticator;
+use Ewll\UserBundle\Authenticator\Exception\NotAuthorizedException;
 use Ewll\UserBundle\Entity\Token;
 use Ewll\UserBundle\Entity\TwofaCode;
-use Ewll\UserBundle\Entity\User;
+use App\Entity\User;
+use Ewll\UserBundle\Form\Constraints\CsrfToken;
 use Ewll\UserBundle\Form\Constraints\TokenType;
 use Ewll\UserBundle\Form\DataTransformer\CodeToTokenTransformer;
 use Ewll\UserBundle\Form\DataTransformer\TwofaTypeToServiceTransformer;
@@ -17,18 +19,20 @@ use Ewll\UserBundle\Token\TokenProvider;
 use Ewll\UserBundle\Twofa\Exception\EmptyTwofaCodeException;
 use Ewll\UserBundle\Twofa\Exception\IncorrectTwofaCodeException;
 use Ewll\UserBundle\Twofa\Item\GoogleTwofa;
+use Ewll\UserBundle\Twofa\JsConfigCompiler;
 use Ewll\UserBundle\Twofa\StoredKeyTwofaInterface;
 use Ewll\UserBundle\Twofa\TwofaHandler;
 use Ewll\UserBundle\Twofa\Exception\CannotProvideCodeException;
 use LogicException;
 use RuntimeException;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Form\Extension\Core\Type\FormType;
 use Symfony\Component\Form\Extension\Core\Type\IntegerType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormError;
-use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Validator\Constraints\NotBlank;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
@@ -48,6 +52,8 @@ class TwofaController extends AbstractController
     private $telegramBotName;
     private $domain;
     private $codeToTokenTransformer;
+    private $jsConfigCompiler;
+    private $actions;
 
     public function __construct(
         Authenticator $authenticator,
@@ -60,7 +66,9 @@ class TwofaController extends AbstractController
         TokenProvider $tokenProvider,
         string $telegramBotName,
         string $domain,
-        CodeToTokenTransformer $codeToTokenTransformer
+        CodeToTokenTransformer $codeToTokenTransformer,
+        JsConfigCompiler $jsConfigCompiler,
+        array $actions
     ) {
         $this->authenticator = $authenticator;
         $this->pageDataCompiler = $pageDataCompiler;
@@ -73,6 +81,40 @@ class TwofaController extends AbstractController
         $this->telegramBotName = $telegramBotName;
         $this->domain = $domain;
         $this->codeToTokenTransformer = $codeToTokenTransformer;
+        $this->jsConfigCompiler = $jsConfigCompiler;
+        $this->actions = $actions;
+    }
+
+    public function code(Request $request, int $actionId)
+    {
+        $formBuilder = $this->createFormBuilder(null, ['constraints' => [new CsrfToken()]]);
+        $form = $formBuilder->getForm();
+        $form->submit($request->request->get('form', []));
+
+        if ($form->isValid()) {
+            $isActionExists = false;
+            foreach ($this->actions as $action) {
+                if ($action['id'] === $actionId) {
+                    $isActionExists = true;
+                }
+            }
+            if ($isActionExists) {
+                try {
+                    $user = $this->authenticator->getUser();
+                    $this->twofaHandler->provideCodeToUser($user, $actionId);
+
+                    return new JsonResponse([]);
+                } catch (NotAuthorizedException $e) {
+                    throw new LogicException('User must be here');
+                } catch (CannotProvideCodeException $e) {
+                    $form->addError(new FormError($e->getMessage()));
+                }
+            } else {
+                $form->addError(new FormError($this->translator->trans('twofa.action.not-exists', [], 'validators')));
+            }
+        }
+
+        return new FormErrorResponse($form);
     }
 
     public function page(string $tokenCode)
@@ -103,19 +145,14 @@ class TwofaController extends AbstractController
         $jsConfig = [
             'tokenCode' => $tokenCode,
             'isCodeWrong' => false,
-            'twofaActionId' => null,
             'isStoredTwofaCode' => false
         ];
         try {
             $token = $this->tokenProvider->getByCode($tokenCode, AuthToken::TYPE_ID);
             /** @var User $user */
             $user = $this->repositoryProvider->get(User::class)->findById($token->data['userId']);
-            if (!$user->hasTwofa()) {
-                throw new LogicException('Expected twofa here');
-            }
+            $jsConfig['isStoredTwofaCode'] = $this->jsConfigCompiler->isStoredTwofaCode($user);
             $jsConfig['twofaTypeId'] = $user->twofaTypeId;
-            $twofa = $this->twofaHandler->getTwofaServiceByTypeId($user->twofaTypeId);
-            $jsConfig['isStoredTwofaCode'] = $twofa instanceof StoredKeyTwofaInterface;
         } catch (TokenNotFoundException $e) {
             $jsConfig['isCodeWrong'] = true;
         }
@@ -134,8 +171,7 @@ class TwofaController extends AbstractController
             ])
             ->add('token', TextType::class, [
                 'constraints' => [new NotBlank(), new TokenType(TwofaSetToken::TYPE_ID)],
-            ])
-        ;
+            ]);
         $formBuilder->get('type')->addModelTransformer($this->twofaTypeToServiceTransformer);
         $formBuilder->get('token')->addViewTransformer($this->codeToTokenTransformer);
         $form = $formBuilder->getForm();
@@ -155,23 +191,14 @@ class TwofaController extends AbstractController
                 $form->addError(new FormError($this->translator->trans('twofa.already-has', [], 'validators')));
             } else {
                 try {
-                    $this->twofaHandler->provideCode($user, $twofaService, $contact, TwofaCode::ACTION_ID_ENROLL);;
-
-                    return new JsonResponse([]);
+                    $this->twofaHandler->provideCodeToContact($user, $twofaService, $contact,
+                        TwofaCode::ACTION_ID_ENROLL);;
                 } catch (CannotProvideCodeException $e) {
-                    switch ($e->getCode()) {
-                        case CannotProvideCodeException::CODE_RECIPIENT_NOT_EXISTS:
-                            $error = 'twofa.message.recipient-not-exists';
-                            break;
-                        case CannotProvideCodeException::CODE_HAVE_ACTIVE:
-                            $error = 'twofa.message.have-active';
-                            break;
-                        default:
-                            $error = 'twofa.message.cannot-send';
-                    }
-                    //@todo непонятно почему не переводится автоматически...
-                    $form->addError(new FormError($this->translator->trans($error, [], 'validators')));
+                    $form->addError(new FormError($e->getMessage()));
                 }
+            }
+            if ($form->isValid()) {
+                return new JsonResponse([]);
             }
         }
 
@@ -186,7 +213,11 @@ class TwofaController extends AbstractController
             /** @var Token $token */
             $token = $data['token'];
             $user = $this->repositoryProvider->get(User::class)->findById($token->data['userId']);
-            $this->provideCodeByUserAndForm($user, $form);
+            try {
+                $this->twofaHandler->provideCodeToUser($user, TwofaCode::ACTION_ID_LOGIN);
+            } catch (CannotProvideCodeException $e) {
+                $form->addError(new FormError($e->getMessage()));
+            }
             if ($form->isValid()) {
                 return new JsonResponse([]);
             }
@@ -243,7 +274,7 @@ class TwofaController extends AbstractController
                 $form->addError(new FormError($this->translator->trans('twofa.already-has', [], 'validators')));
             } else {
                 try {
-                    $this->twofaHandler->setTwofa($user, $twofaService, $code, TwofaCode::ACTION_ID_ENROLL, $context);
+                    $this->twofaHandler->setTwofa($user, $twofaService, $code, $context);
                     $this->tokenProvider->toUse($token);
                     $this->authenticator->login($user, $request->getClientIp());
 
@@ -259,37 +290,5 @@ class TwofaController extends AbstractController
         }
 
         return new FormErrorResponse($form);
-    }
-
-    private function provideCodeByUserAndForm(User $user, FormInterface $form): FormInterface
-    {
-        try {
-            if ($user->hasTwofa()) {
-                /** @var StoredKeyTwofaInterface $twofa */
-                $twofa = $this->twofaHandler->getTwofaServiceByTypeId($user->twofaTypeId, true);
-                if (!$twofa instanceof StoredKeyTwofaInterface) {
-                    throw new RuntimeException('Only StoredKeyTwofaInterface must be here');
-                }
-                $this->twofaHandler->provideCode($user, $twofa, $user->twofaData['contact'], TwofaCode::ACTION_ID_LOGIN);
-
-                return $form;
-            } else {
-                $form->addError(new FormError($this->translator->trans('twofa.has-no', [], 'validators')));
-            }
-        } catch (CannotProvideCodeException $e) {
-            switch ($e->getCode()) {
-                case CannotProvideCodeException::CODE_RECIPIENT_NOT_EXISTS:
-                    $error = 'twofa.message.recipient-not-exists';
-                    break;
-                case CannotProvideCodeException::CODE_HAVE_ACTIVE:
-                    $error = 'twofa.message.have-active';
-                    break;
-                default:
-                    $error = 'twofa.message.cannot-send';
-            }
-            $form->addError(new FormError($this->translator->trans($error, [], 'validators')));
-        }
-
-        return $form;
     }
 }

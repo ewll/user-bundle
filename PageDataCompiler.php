@@ -1,7 +1,7 @@
 <?php namespace Ewll\UserBundle;
 
 use Ewll\UserBundle\Entity\TwofaCode;
-use Ewll\UserBundle\Entity\User;
+use App\Entity\User;
 use Ewll\UserBundle\Form\Constraints as CustomConstraints;
 use Ewll\UserBundle\Form\DataTransformer\CodeToTokenTransformer;
 use Ewll\UserBundle\Form\DataTransformer\UserToEmailTransformer;
@@ -159,7 +159,7 @@ class PageDataCompiler
                 ],
                 'twofaCode' => [
                     'type' => FieldType\TextType::class,
-                    'constraints' => [new CustomConstraints\Twofa(TwofaCode::ACTION_ID_LOGIN)],
+                    'constraints' => [new CustomConstraints\Twofa(TwofaCode::ACTION_ID_LOGIN, true)],
                 ],
             ],
             self::FORM_AUTH_TYPE_OAUTH_SIGNUP => [

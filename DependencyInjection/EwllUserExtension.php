@@ -35,5 +35,8 @@ class EwllUserExtension extends Extension
                 ->addArgument("%ewll_user.oauth.$name.parameters%")
                 ->addMethodCall('setRouter', [new Reference('router')]);
         }
+
+        $twofaActions = $config['twofa']['actions'] ?? [];
+        $container->setParameter("ewll_user.twofa.actions", $twofaActions);
     }
 }

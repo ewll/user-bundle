@@ -27,3 +27,4 @@ ewll_db:
         - 'EwllUserBundle'
 ```
 
+Create App\Entity\User

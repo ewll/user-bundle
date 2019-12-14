@@ -1,7 +1,7 @@
 <?php namespace Ewll\UserBundle\Form\DataTransformer;
 
 use Ewll\DBBundle\Repository\RepositoryProvider;
-use Ewll\UserBundle\Entity\User;
+use App\Entity\User;
 use Symfony\Component\Form\DataTransformerInterface;
 use Symfony\Component\Form\Exception\TransformationFailedException;
 

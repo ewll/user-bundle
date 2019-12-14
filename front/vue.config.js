@@ -4,8 +4,8 @@ module.exports = {
     publicPath: '/inc/auth/',
     devServer: {
         host: '0.0.0.0',
-        port: 8080,
-        public: 'localhost:8080',
+        port: 8082,
+        public: 'localhost:8082',
         disableHostCheck: true,
         https: true
     },

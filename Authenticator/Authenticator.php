@@ -7,7 +7,7 @@ use Ewll\MailerBundle\Template;
 use Ewll\UserBundle\Authenticator\Exception\CannotConfirmEmailException;
 use Ewll\UserBundle\Authenticator\Exception\NotAuthorizedException;
 use Ewll\UserBundle\Entity\Token;
-use Ewll\UserBundle\Entity\User;
+use App\Entity\User;
 use Ewll\UserBundle\EwllUserBundle;
 use Ewll\UserBundle\Token\Exception\ActiveTokenExistsException;
 use Ewll\UserBundle\Token\Exception\TokenNotFoundException;

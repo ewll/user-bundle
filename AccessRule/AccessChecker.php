@@ -1,6 +1,6 @@
 <?php namespace Ewll\UserBundle\AccessRule;
 
-use Ewll\UserBundle\Entity\User;
+use App\Entity\User;
 use LogicException;
 
 class AccessChecker

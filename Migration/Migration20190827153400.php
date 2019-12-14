@@ -22,6 +22,7 @@ CREATE TABLE `user` (
     `timezone` VARCHAR (30) NOT NULL DEFAULT 'Atlantic/Reykjavik',
     `isEmailConfirmed` TINYINT(3) UNSIGNED NOT NULL,
     `accessRights` TEXT NOT NULL DEFAULT '[]',
+    `isDeleted` tinyint(1) UNSIGNED NOT NULL,
     `createdTs` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     INDEX `email_pass` (`email`, `pass`),

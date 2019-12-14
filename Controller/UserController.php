@@ -6,7 +6,7 @@ use Ewll\UserBundle\Authenticator\Exception\CannotConfirmEmailException;
 use Ewll\UserBundle\Authenticator\Exception\NotAuthorizedException;
 use Ewll\UserBundle\Captcha\CaptchaProvider;
 use Ewll\UserBundle\Entity\Token;
-use Ewll\UserBundle\Entity\User;
+use App\Entity\User;
 use Ewll\UserBundle\Form\FormErrorResponse;
 use Ewll\UserBundle\PageDataCompiler;
 use Ewll\UserBundle\Token\Exception\ActiveTokenExistsException;

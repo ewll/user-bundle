@@ -17,7 +17,6 @@
         props: {
             form: Object,
             addFormDataKeys: Array,
-            actionId: Number,
             isStoredCode: {type: Boolean, default: false},
             url: String,
             token: String,

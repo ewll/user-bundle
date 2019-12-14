@@ -17,7 +17,7 @@
     "symfony/validator": "^5",
     "symfony/framework-bundle": "^5",
     "symfony/translation": "^5",
-    "ewll/db-bundle": "^2.14",
+    "ewll/db-bundle": "^2.16",
     "ewll/mailer-bundle": "^1.2",
     "guzzlehttp/guzzle": "^6.3",
     "google/apiclient": "^2.4",
