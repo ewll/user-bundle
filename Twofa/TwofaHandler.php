@@ -72,7 +72,7 @@ class TwofaHandler
             $this->defaultDbClient->rollback();
             $code = CannotProvideCodeException::CODE_CANNOT_SEND;
             if ($e instanceof CannotSendMessageException) {
-                $this->logger->crit(
+                $this->logger->critical(
                     "CannotSendMessageException: {$e->getMessage()}",
                     ['type' => $twofa->getType(), 'contact' => $contact, 'userId' => $twofaCode->userId,]
                 );

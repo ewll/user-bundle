@@ -12,11 +12,13 @@ class TelegramTwofa implements StoredKeyTwofaInterface
 
     private $guzzle;
     private $telegramBotToken;
+    private $proxy;
 
-    public function __construct(string $telegramBotToken)
+    public function __construct(string $telegramBotToken, string $proxy = null)
     {
         $this->guzzle = new Guzzle();
         $this->telegramBotToken = $telegramBotToken;
+        $this->proxy = $proxy;
     }
 
     public function getId(): int
@@ -38,11 +40,21 @@ class TelegramTwofa implements StoredKeyTwofaInterface
                 'chat_id' => $contact,
                 'text' => $message,
             ];
-            $request = $this->guzzle->get($url, [
+            $options = [
                 'timeout' => 6,
                 'connect_timeout' => 6,
                 'query' => $params,
-            ]);
+            ];
+            if (null !== $this->proxy) {
+                $proxy = parse_url($this->proxy);
+                $options['curl'] = [
+                    CURLOPT_PROXY => $proxy['host'],
+                    CURLOPT_PROXYTYPE => CURLPROXY_SOCKS5_HOSTNAME,
+                    CURLOPT_PROXYPORT => $proxy['port'],
+                    CURLOPT_PROXYUSERPWD => "{$proxy['user']}:{$proxy['pass']}",
+                ];
+            }
+            $request = $this->guzzle->get($url, $options);
             $content = $request->getBody()->getContents();
             $contentData = json_decode($content, true);
             if (true !== $contentData['ok']) {

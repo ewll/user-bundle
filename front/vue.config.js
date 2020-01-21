@@ -1,4 +1,5 @@
 const path = require("path");
+const fs = require('fs');
 
 module.exports = {
     publicPath: '/inc/auth/',
@@ -7,7 +8,10 @@ module.exports = {
         port: 8082,
         public: 'localhost:8082',
         disableHostCheck: true,
-        https: true
+        https: {
+            key: fs.readFileSync('./../../../127.0.0.1+1-key.pem'),
+            cert: fs.readFileSync('./../../../127.0.0.1+1.pem'),
+        }
     },
     outputDir: path.resolve(__dirname, './../../../../public/inc/auth'),
     configureWebpack: {
@@ -22,13 +26,13 @@ module.exports = {
             .plugin('provide')
             .use(require('webpack').ProvidePlugin, [{
                 Main: path.resolve(path.join(__dirname, 'Main.js')),
-            }])
+            }]);
         if(config.plugins.has('extract-css')) {
-            const extractCSSPlugin = config.plugin('extract-css')
+            const extractCSSPlugin = config.plugin('extract-css');
             extractCSSPlugin && extractCSSPlugin.tap(() => [{
                 filename: '[name].css',
                 chunkFilename: '[name].css'
             }])
         }
     }
-}
+};

@@ -16,7 +16,7 @@
         <v-alert class="vuetifyAlert__noPadding" icon="mdi-numeric-2" dense>
             <div>
                 Теперь введите ваш id и получите код. Как узнать свой id смотрите
-                <a href="https://salamakhin.com/blog/how-to-know-my-telegram-id" target="_blank">здесь</a>.
+                <a href="/doc/telegramId" target="_blank">здесь</a>.
             </div>
             <div>
                 <enroll-code-form/>

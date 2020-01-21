@@ -21,6 +21,7 @@ class Configuration implements ConfigurationInterface
                 ->scalarNode('domain')->isRequired()->cannotBeEmpty()->end()
                 ->scalarNode('telegram_bot_name')->isRequired()->cannotBeEmpty()->end()
                 ->scalarNode('telegram_bot_token')->isRequired()->cannotBeEmpty()->end()
+                ->scalarNode('telegram_proxy')->cannotBeEmpty()->defaultNull()->end()
                 ->arrayNode('oauth')
                     ->arrayPrototype()
                         ->children()

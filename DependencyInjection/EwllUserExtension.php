@@ -26,6 +26,7 @@ class EwllUserExtension extends Extension
         $container->setParameter('ewll_user.domain', $config['domain']);
         $container->setParameter('ewll_user.telegram_bot_name', $config['telegram_bot_name']);
         $container->setParameter('ewll_user.telegram_bot_token', $config['telegram_bot_token']);
+        $container->setParameter('ewll_user.telegram_proxy', $config['telegram_proxy']);
 
         foreach ($config['oauth'] as $name => $params) {
             $container->setParameter("ewll_user.oauth.$name.parameters", $params);
