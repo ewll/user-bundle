@@ -1,5 +1,12 @@
 const path = require("path");
 const fs = require('fs');
+const https = fs.existsSync('./../../../../127.0.0.1+1-key.pem')
+    ? {
+        key: fs.readFileSync('./../../../../127.0.0.1+1-key.pem'),
+        cert: fs.readFileSync('./../../../../127.0.0.1+1.pem'),
+    }
+    : {};
+
 
 module.exports = {
     publicPath: '/inc/auth/',
@@ -8,10 +15,7 @@ module.exports = {
         port: 8082,
         public: 'localhost:8082',
         disableHostCheck: true,
-        https: {
-            key: fs.readFileSync('./../../../127.0.0.1+1-key.pem'),
-            cert: fs.readFileSync('./../../../127.0.0.1+1.pem'),
-        }
+        https
     },
     outputDir: path.resolve(__dirname, './../../../../public/inc/auth'),
     configureWebpack: {
