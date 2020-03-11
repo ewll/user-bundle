@@ -18,7 +18,7 @@ CREATE TABLE `user` (
     `pass` VARCHAR(64) NOT NULL,
     `twofaTypeId` TINYINT(3) UNSIGNED NULL,
     `twofaData` VARCHAR(256) NULL,
-    `ip` VARCHAR(39) NOT NULL,
+    `ip` VARCHAR(39) NULL,
     `timezone` VARCHAR (30) NOT NULL DEFAULT 'Atlantic/Reykjavik',
     `isEmailConfirmed` TINYINT(3) UNSIGNED NOT NULL,
     `accessRights` TEXT NOT NULL DEFAULT '[]',

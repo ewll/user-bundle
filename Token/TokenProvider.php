@@ -39,7 +39,7 @@ class TokenProvider
     }
 
     /** @throws ActiveTokenExistsException */
-    public function generate(string $class, array $data, string $ip, bool $isCheckExists = false): Token
+    public function generate(string $class, array $data, string $ip = null, bool $isCheckExists = false): Token
     {
         $tokenRepository = $this->repositoryProvider->get(Token::class);
         $tokenItem = $this->getTokenItemByClass($class);
