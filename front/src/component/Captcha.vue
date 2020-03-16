@@ -19,6 +19,7 @@
         props: {
             form: Object,
             disabled: {type: Boolean, default: false},
+            color: {type: String, default: ''},
         },
         data: () => ({
             url: null,
@@ -42,7 +43,7 @@
                 // this.form.data.captcha = 0; //@TODO не сбрасывает указатель
                 let ts = new Date().getTime();
                 this.size = document.getElementById('captcha').offsetWidth;
-                this.url = '/captcha?size='+this.size+'&'+ts;
+                this.url = '/captcha?size='+this.size+'&color='+this.color+'&'+ts;
             }
         },
     }
@@ -52,6 +53,8 @@
     .captcha {
         display: flex;
         justify-content: center;
+        margin: auto;
+        max-width: 800px;
     }
     .captcha__content {
     }

@@ -33,7 +33,7 @@ class CaptchaProvider
         $this->domain = $domain;
     }
 
-    public function provide(int $size, string $ip): string
+    public function provide(int $size, string $ip, array $color): string
     {
         $value = random_int(20, 100);
         $tokenData = ['ip' => $ip, 'value' => $value];
@@ -41,7 +41,7 @@ class CaptchaProvider
         $tokenCode = $this->tokenProvider->compileTokenCode($token);
         SetCookie(self::SESSION_COOKIE_NAME, $tokenCode, time() + 300, '/', $this->domain, true, true);
 
-        $image = $this->generateImage($size, $value);
+        $image = $this->generateImage($size, $value, $color);
 
         return $image;
     }
@@ -82,15 +82,15 @@ class CaptchaProvider
         }
     }
 
-    private function generateImage(int $size, int $value): string
+    private function generateImage(int $size, int $value, array $color): string
     {
         $image = imagecreatetruecolor($size, self::IMG_HEIGHT);
         imagealphablending($image, false);
         imagesavealpha($image, true);
-        $backgroundColor = imagecolorallocate($image, 178, 223, 219);
+        $backgroundColor = call_user_func_array('imagecolorallocate', array_merge([$image], $color));
         imagefilledrectangle($image, 0, 0, $size, self::IMG_HEIGHT, $backgroundColor);
 
-        $elementsColor = imagecolorallocate($image, 255, 255, 255);
+        $elementsColor = imagecolorallocate($image, 255, 255, 255);;
 
         $indent = 20;
         $rate = ($size - $indent * 2) / 99.756;

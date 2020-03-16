@@ -1,0 +1,4 @@
+captcha:
+  path: /captcha
+  controller: Ewll\UserBundle\Controller\CaptchaController::captcha
+  methods: [GET]

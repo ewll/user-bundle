@@ -75,10 +75,6 @@ passwordRecovering.recover:
   path: /password-recovering/recover
   controller: Ewll\UserBundle\Controller\UserController::passwordRecoveringRecover
   methods: [POST]
-captcha:
-  path: /captcha
-  controller: Ewll\UserBundle\Controller\CaptchaController::captcha
-  methods: [GET]
 exit:
   path: /exit
   controller: Ewll\UserBundle\Controller\UserController::exit
