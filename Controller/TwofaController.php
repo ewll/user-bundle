@@ -54,6 +54,7 @@ class TwofaController extends AbstractController
     private $codeToTokenTransformer;
     private $jsConfigCompiler;
     private $actions;
+    private $redirect;
 
     public function __construct(
         Authenticator $authenticator,
@@ -68,7 +69,8 @@ class TwofaController extends AbstractController
         string $domain,
         CodeToTokenTransformer $codeToTokenTransformer,
         JsConfigCompiler $jsConfigCompiler,
-        array $actions
+        array $actions,
+        string $redirect
     ) {
         $this->authenticator = $authenticator;
         $this->pageDataCompiler = $pageDataCompiler;
@@ -83,6 +85,7 @@ class TwofaController extends AbstractController
         $this->codeToTokenTransformer = $codeToTokenTransformer;
         $this->jsConfigCompiler = $jsConfigCompiler;
         $this->actions = $actions;
+        $this->redirect = $redirect;
     }
 
     public function code(Request $request, int $actionId)
@@ -119,6 +122,7 @@ class TwofaController extends AbstractController
 
     public function page(string $tokenCode)
     {
+        $jsConfig = ['redirect' => $this->redirect];
         try {
             $token = $this->tokenProvider->getByCode($tokenCode, TwofaSetToken::TYPE_ID);
         } catch (TokenNotFoundException $e) {
@@ -145,7 +149,8 @@ class TwofaController extends AbstractController
         $jsConfig = [
             'tokenCode' => $tokenCode,
             'isCodeWrong' => false,
-            'isStoredTwofaCode' => false
+            'isStoredTwofaCode' => false,
+            'redirect' => $this->redirect,
         ];
         try {
             $token = $this->tokenProvider->getByCode($tokenCode, AuthToken::TYPE_ID);

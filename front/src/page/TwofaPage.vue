@@ -57,7 +57,7 @@
             },
             success() {
                 this.$snack.success({text: 'Переадресация'});
-                window.location.href = '/private';
+                window.location.href = this.config.redirect;
             },
         }
     }

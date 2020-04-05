@@ -1,3 +1,7 @@
+main:
+  path: /
+  controller: Ewll\UserBundle\Controller\UserController::mainPage
+  methods: [GET]
 login.page:
   path: /login/{tokenCode}
   controller: Ewll\UserBundle\Controller\UserController::loginPage

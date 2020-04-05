@@ -227,12 +227,6 @@ class Authenticator
         }
     }
 
-    /** @deprecated */
-    public function getRedirectUrlAfterLogin(User $user)
-    {
-        return $user->hasTwofa() ? '/private' : '/2fa';
-    }
-
     private function setSessionCookie($value, $duration)
     {
         SetCookie(self::SESSION_COOKIE_NAME, $value, time() + $duration, '/', $this->domain, true, true);

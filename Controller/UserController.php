@@ -33,6 +33,7 @@ class UserController extends AbstractController
     private $captchaProvider;
     private $tokenProvider;
     private $translator;
+    private $redirect;
 
     public function __construct(
         Authenticator $authenticator,
@@ -41,7 +42,8 @@ class UserController extends AbstractController
         TwofaHandler $twofaHandler,
         CaptchaProvider $captchaProvider,
         TokenProvider $tokenProvider,
-        TranslatorInterface $translator
+        TranslatorInterface $translator,
+        string $redirect
     ) {
         $this->authenticator = $authenticator;
         $this->repositoryProvider = $repositoryProvider;
@@ -50,6 +52,7 @@ class UserController extends AbstractController
         $this->captchaProvider = $captchaProvider;
         $this->tokenProvider = $tokenProvider;
         $this->translator = $translator;
+        $this->redirect = $redirect;
     }
 
     public function loginPage(string $tokenCode = null)
@@ -57,7 +60,7 @@ class UserController extends AbstractController
         try {
             $this->authenticator->getUser();
 
-            return $this->redirect('/private');
+            return $this->redirect($this->redirect);
         } catch (NotAuthorizedException $e) {
         }
 
@@ -71,6 +74,11 @@ class UserController extends AbstractController
         }
 
         return $this->pageDataCompiler->getPage(PageDataCompiler::PAGE_NAME_LOGIN, $jsConfig);
+    }
+
+    public function mainPage()
+    {
+        return $this->redirect('/login');
     }
 
     public function login(Request $request)

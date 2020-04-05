@@ -22,6 +22,7 @@ class EwllUserExtension extends Extension
         $loader = new YamlFileLoader($container, new FileLocator(__DIR__ . '/../Resources/config'));
         $loader->load('services.yaml');
 
+        $container->setParameter('ewll_user.redirect', $config['redirect']);
         $container->setParameter('ewll_user.salt', $config['salt']);
         $container->setParameter('ewll_user.domain', $config['domain']);
         $container->setParameter('ewll_user.telegram_bot_name', $config['telegram_bot_name']);

@@ -39,7 +39,7 @@
                 this.$snack.success({text: 'Переадресация'});
                 let urlParts = window.location.href.split('#');
                 let sharpParams = urlParts.length === 2 ? '#' + urlParts[1] : '';
-                window.location.href = '/private' + sharpParams;
+                window.location.href = this.config.redirect + sharpParams;
             },
         }
     }

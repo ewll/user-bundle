@@ -42,6 +42,7 @@ services:
             - '@Ewll\UserBundle\Captcha\CaptchaProvider'
             - '@Ewll\UserBundle\Token\TokenProvider'
             - '@translator'
+            - '%ewll_user.redirect%'
 
     Ewll\UserBundle\Controller\CaptchaController:
         public: true
@@ -68,6 +69,7 @@ services:
             - '@Ewll\UserBundle\Form\DataTransformer\CodeToTokenTransformer'
             - '@Ewll\UserBundle\Twofa\JsConfigCompiler'
             - '%ewll_user.twofa.actions%'
+            - '%ewll_user.redirect%'
 
     Ewll\UserBundle\Controller\OauthController:
         public: true

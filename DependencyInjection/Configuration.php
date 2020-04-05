@@ -17,6 +17,7 @@ class Configuration implements ConfigurationInterface
 
         $treeBuilder->getRootNode()
             ->children()
+                ->scalarNode('redirect')->isRequired()->cannotBeEmpty()->end()
                 ->scalarNode('salt')->isRequired()->cannotBeEmpty()->end()
                 ->scalarNode('domain')->isRequired()->cannotBeEmpty()->end()
                 ->scalarNode('telegram_bot_name')->isRequired()->cannotBeEmpty()->end()
