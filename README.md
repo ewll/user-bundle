@@ -28,3 +28,7 @@ ewll_db:
 ```
 
 Create App\Entity\User
+
+Create the base letter template in ./templates/letter/letterBase.html.twig with:
+{% block subject %}{% endblock %}
+{% block body %}{% endblock %}

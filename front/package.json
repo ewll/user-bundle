@@ -2,7 +2,7 @@
   "name": "ctm-admin",
   "private": true,
   "scripts": {
-    "serve": "vue-cli-service serve",
+    "auth-serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
     "lint": "vue-cli-service lint"
   },

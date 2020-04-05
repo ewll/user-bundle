@@ -1,9 +1,9 @@
 const path = require("path");
 const fs = require('fs');
-const https = fs.existsSync('./../../../../127.0.0.1+1-key.pem')
+const https = fs.existsSync('./../../../127.0.0.1+1-key.pem')
     ? {
-        key: fs.readFileSync('./../../../../127.0.0.1+1-key.pem'),
-        cert: fs.readFileSync('./../../../../127.0.0.1+1.pem'),
+        key: fs.readFileSync('./../../../127.0.0.1+1-key.pem'),
+        cert: fs.readFileSync('./../../../127.0.0.1+1.pem'),
     }
     : {};
 
