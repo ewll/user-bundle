@@ -4,7 +4,7 @@
                @success="success" :showForm="showForm">
         <template v-slot:default="slotProps">
             <email-field :form="slotProps.form"/>
-            <captcha :form="slotProps.form"/>
+            <captcha :form="slotProps.form" color="0177fd"/>
         </template>
         <template v-slot:actions>
             <v-btn href="/login" text>Назад</v-btn>

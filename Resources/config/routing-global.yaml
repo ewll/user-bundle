@@ -2,3 +2,7 @@ captcha:
   path: /captcha
   controller: Ewll\UserBundle\Controller\CaptchaController::captcha
   methods: [GET]
+twofa.code:
+  path: /2fa/code/{actionId}
+  controller: Ewll\UserBundle\Controller\TwofaController::code
+  methods: [POST]

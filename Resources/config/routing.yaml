@@ -51,10 +51,6 @@ twofa.login:
   path: /2fa/login
   controller: Ewll\UserBundle\Controller\TwofaController::login
   methods: [POST]
-twofa.code:
-  path: /2fa/code/{actionId}
-  controller: Ewll\UserBundle\Controller\TwofaController::code
-  methods: [POST]
 #twofa.oauth.code:
 #  path: /2fa/oauth/code
 #  controller: Ewll\UserBundle\Controller\TwofaController::oauthCode

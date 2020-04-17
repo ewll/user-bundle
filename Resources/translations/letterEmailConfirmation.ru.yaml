@@ -1,2 +1,7 @@
 subject: Подтвердите ваш email
-text: 'Для подтверждения регистрации на <a href="https://%domain%">%domain%</a> перейдите по ссылке <a href="%link%">%link%</a>'
+Welcome: Добро пожаловать
+
+You are successful registered in service: Вы успешно зарегистрировались в сервисе
+Follow next link to confirm email address: Пройдите по ссылке чтобы подтвердить регистрацию
+Thank you for registration: Благодарим Вас за регистрацию
+With respect, administration: С уважением, администрация

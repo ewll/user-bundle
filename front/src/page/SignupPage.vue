@@ -5,7 +5,7 @@
             <oauth/>
             <email-field :form="slotProps.form"/>
             <pass-field :form="slotProps.form"/>
-            <captcha :form="slotProps.form"/>
+            <captcha :form="slotProps.form" color="0177fd"/>
         </template>
         <template v-slot:actions>
             <v-btn href="/login" text>Вход</v-btn>

@@ -1,10 +1,15 @@
 {% extends 'letter/letterBase.html.twig' %}
 {% trans_default_domain 'letterEmailConfirmation' %}
 
-{% block subject %}{% trans %}subject{% endtrans %}{% endblock %}
+{% block title %}{% trans %}Welcome{% endtrans %}!{% endblock %}
 
 {% block body %}
-    {% trans with {'%domain%': domain, '%link%': link} %}
-        text
-    {% endtrans %}
+    {% trans %}You are successful registered in service{% endtrans %} <a href="https://{{ domain }}" target="_blank">{{ domain|upper }}</a>
+    <br/>
+    <br/>{% trans %}Follow next link to confirm email address{% endtrans %}:
+    <br/>
+    <br/><a href="{{link}}" target="_blank">{{link}}</a>
+    <br/>
+    <br/>{% trans %}Thank you for registration{% endtrans %}!
+    <br/>{% trans %}With respect, administration{% endtrans %} {{ siteName|upper }}
 {% endblock %}
