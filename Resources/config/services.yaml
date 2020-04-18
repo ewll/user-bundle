@@ -29,6 +29,7 @@ services:
             - '@Ewll\UserBundle\Form\DataTransformer\UserToEmailTransformer'
             - '@Ewll\UserBundle\Form\DataTransformer\CodeToTokenTransformer'
             - !tagged ewll_user_oauth
+            - '%ewll_user.domain%'
 
     Ewll\UserBundle\Controller\UserController:
         public: true

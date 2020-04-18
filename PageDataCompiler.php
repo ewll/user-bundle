@@ -45,6 +45,7 @@ class PageDataCompiler
     private $codeToTokenTransformer;
     /** @var OauthInterface[] */
     private $oauths;
+    private $domain;
 
     public function __construct(
         TranslatorInterface $translator,
@@ -52,7 +53,8 @@ class PageDataCompiler
         FormFactoryInterface $formFactory,
         UserToEmailTransformer $userToEmailTransformer,
         CodeToTokenTransformer $codeToTokenTransformer,
-        iterable $oauths
+        iterable $oauths,
+        string $domain
     ) {
         $this->translator = $translator;
         $this->twig = $twig;
@@ -60,6 +62,7 @@ class PageDataCompiler
         $this->userToEmailTransformer = $userToEmailTransformer;
         $this->codeToTokenTransformer = $codeToTokenTransformer;
         $this->oauths = $oauths;
+        $this->domain = $domain;
     }
 
     public function getPage(string $pageName, array $jsConfig = [], User $user = null)
@@ -68,6 +71,7 @@ class PageDataCompiler
         $jsConfig['token'] = $token;
         $jsConfig['pageName'] = $pageName;
         $jsConfig['oauths'] = [];
+        $jsConfig['domain'] = $this->domain;
         foreach ($this->oauths as $oauth) {
             $jsConfig['oauths'][] = ['name' => $oauth->getType(), 'url' => $oauth->getUrl()];
         }
