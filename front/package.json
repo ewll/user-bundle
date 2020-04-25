@@ -1,5 +1,5 @@
 {
-  "name": "ctm-admin",
+  "name": "user-bundle",
   "private": true,
   "scripts": {
     "auth-serve": "vue-cli-service serve",
@@ -7,10 +7,6 @@
     "lint": "vue-cli-service lint"
   },
   "dependencies": {
-    "vue": "^2.6.10",
-    "vue-resource": "^1.5.1",
-    "vue-snack": "^0.1.4",
-    "vuetify": "^2.1.2",
     "@vue/cli-plugin-babel": "^3.9.0",
     "@vue/cli-plugin-eslint": "^3.9.0",
     "@vue/cli-service": "^3.9.0",
@@ -18,7 +14,11 @@
     "node-sass": "^4.12.0",
     "sass": "^1.17.4",
     "sass-loader": "^7.1.0",
+    "vue": "^2.6.10",
     "vue-cli-plugin-vuetify": "^0.6.1",
+    "vue-resource": "^1.5.1",
+    "vue-snack": "^0.1.4",
+    "vuetify": "^2.1.2",
     "vuetify-loader": "^1.2.2"
   },
   "devDependencies": {

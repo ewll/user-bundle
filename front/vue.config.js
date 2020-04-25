@@ -7,7 +7,6 @@ const https = fs.existsSync('./../../../127.0.0.1+1-key.pem')
     }
     : {};
 
-
 module.exports = {
     transpileDependencies: ['vuetify'],
     publicPath: '/inc/auth/',
