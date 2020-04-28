@@ -17,7 +17,6 @@
     "vue": "^2.6.10",
     "vue-cli-plugin-vuetify": "^0.6.1",
     "vue-resource": "^1.5.1",
-    "vue-snack": "^0.1.4",
     "vuetify": "^2.1.2",
     "vuetify-loader": "^1.2.2"
   },

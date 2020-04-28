@@ -1,5 +1,6 @@
 <template>
     <v-app id="inspire">
+        <v-snackbar v-model="snack.isShow">{{ snack.text }}</v-snackbar>
         <v-content>
             <v-container fluid fill-height>
                 <v-layout align-center justify-center>
@@ -39,6 +40,14 @@
         },
         data: () => ({
             config: config,
+            snack: {isShow: false, text: ''},
         }),
+        beforeMount() {
+            this.$snack.listener = function (text) {
+                this.snack.text = text;
+                this.snack.isShow = false;
+                this.snack.isShow = true;
+            }.bind(this);
+        },
     }
 </script>

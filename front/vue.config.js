@@ -8,7 +8,7 @@ const https = fs.existsSync('./../../../127.0.0.1+1-key.pem')
     : {};
 
 module.exports = {
-    transpileDependencies: ['vuetify', 'vue-snack'],
+    transpileDependencies: ['vuetify'],
     publicPath: '/inc/auth/',
     devServer: {
         host: '0.0.0.0',
@@ -20,7 +20,6 @@ module.exports = {
     outputDir: path.resolve(__dirname, './../../../../public/inc/auth'),
     configureWebpack: {
         output: {
-            path: path.resolve(__dirname, './../../../../public/inc/auth'),
             filename: '[name].js',
             chunkFilename: '[name].js'
         }

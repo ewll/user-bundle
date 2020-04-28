@@ -5,10 +5,25 @@ import Vue from 'vue';
 import App from './App.vue';
 import VueResource from 'vue-resource';
 import vuetify from '@/plugins/vuetify';
-import VueSnackbar from 'vue-snack';
+
+let snack = {
+    install(Vue) {
+        Vue.prototype.$snack = {
+            listener: null,
+            success(data) {
+                if (null !== this.listener) {
+                    this.listener(data.text);
+                }
+            },
+            danger(data) {
+                return this.success(data);
+            }
+        }
+    }
+}
 
 Vue.use(VueResource);
-Vue.use(VueSnackbar, {position: 'bottom', time: 6000});
+Vue.use(snack);
 Vue.config.productionTip = false;
 
 new Vue({
