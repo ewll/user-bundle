@@ -23,6 +23,7 @@ class EwllUserExtension extends Extension
         $loader->load('services.yaml');
 
         $container->setParameter('ewll_user.redirect', $config['redirect']);
+        $container->setParameter('ewll_user.cdn', $config['cdn']);
         $container->setParameter('ewll_user.salt', $config['salt']);
         $container->setParameter('ewll_user.domain', $config['domain']);
         $container->setParameter('ewll_user.telegram_bot_name', $config['telegram_bot_name']);

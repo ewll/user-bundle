@@ -46,6 +46,7 @@ class PageDataCompiler
     /** @var OauthInterface[] */
     private $oauths;
     private $domain;
+    private $cdn;
 
     public function __construct(
         TranslatorInterface $translator,
@@ -54,7 +55,8 @@ class PageDataCompiler
         UserToEmailTransformer $userToEmailTransformer,
         CodeToTokenTransformer $codeToTokenTransformer,
         iterable $oauths,
-        string $domain
+        string $domain,
+        string $cdn
     ) {
         $this->translator = $translator;
         $this->twig = $twig;
@@ -63,6 +65,7 @@ class PageDataCompiler
         $this->codeToTokenTransformer = $codeToTokenTransformer;
         $this->oauths = $oauths;
         $this->domain = $domain;
+        $this->cdn = $cdn;
     }
 
     public function getPage(string $pageName, array $jsConfig = [], User $user = null)
@@ -80,6 +83,7 @@ class PageDataCompiler
             'year' => date('Y'),
             'token' => $token,
             'appName' => 'auth',
+            'cdn' => $this->cdn,
             'pageName' => $this->translator->trans("title.$pageName", [], EwllUserBundle::TRANSLATION_DOMAIN),
         ];
         $response = new Response($this->twig->render('@EwllUser/index.html.twig', $data));
