@@ -1,3 +1,7 @@
+parameters:
+    router.request_context.scheme: 'https'
+    asset.request_context.secure: true
+
 services:
     _defaults:
         autowire: false
@@ -72,6 +76,7 @@ services:
             - '@Ewll\UserBundle\Twofa\JsConfigCompiler'
             - '%ewll_user.twofa.actions%'
             - '%ewll_user.redirect%'
+            - '@logger'
 
     Ewll\UserBundle\Controller\OauthController:
         public: true
@@ -158,6 +163,13 @@ services:
         tags:
             - { name: 'console.command', command: 'ewll:user:flush' }
             - { name: monolog.logger, channel: user }
+
+    Ewll\UserBundle\Command\SetTelegramWebhookCommand:
+        arguments:
+            - '%ewll_user.telegram_bot_token%'
+            - '@router'
+        tags:
+            - { name: 'console.command', command: 'ewll:user:setWebhook' }
 
     Ewll\UserBundle\Twofa\TwofaHandler:
         arguments:

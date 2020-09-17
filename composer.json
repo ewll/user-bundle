@@ -22,7 +22,8 @@
     "guzzlehttp/guzzle": "^6.3",
     "google/apiclient": "^2.4",
     "vkcom/vk-php-sdk": "^5.101",
-    "facebook/graph-sdk": "^5.7"
+    "facebook/graph-sdk": "^5.7",
+    "irazasyed/telegram-bot-sdk": "^2.0"
   },
   "autoload": {
     "psr-4": {
