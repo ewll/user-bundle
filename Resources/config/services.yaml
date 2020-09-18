@@ -71,12 +71,12 @@ services:
             - '@ewll.db.repository-provider'
             - '@Ewll\UserBundle\Token\TokenProvider'
             - '%ewll_user.telegram_bot_name%'
+            - '%ewll_user.telegram_bot_token%'
             - '%ewll_user.domain%'
             - '@Ewll\UserBundle\Form\DataTransformer\CodeToTokenTransformer'
             - '@Ewll\UserBundle\Twofa\JsConfigCompiler'
             - '%ewll_user.twofa.actions%'
             - '%ewll_user.redirect%'
-            - '@logger'
 
     Ewll\UserBundle\Controller\OauthController:
         public: true

@@ -52,6 +52,7 @@ class TwofaController extends AbstractController
     private $repositoryProvider;
     private $tokenProvider;
     private $telegramBotName;
+    private $telegramBotToken;
     private $domain;
     private $codeToTokenTransformer;
     private $jsConfigCompiler;
@@ -68,6 +69,7 @@ class TwofaController extends AbstractController
         RepositoryProvider $repositoryProvider,
         TokenProvider $tokenProvider,
         string $telegramBotName,
+        string $telegramBotToken,
         string $domain,
         CodeToTokenTransformer $codeToTokenTransformer,
         JsConfigCompiler $jsConfigCompiler,
@@ -83,6 +85,7 @@ class TwofaController extends AbstractController
         $this->repositoryProvider = $repositoryProvider;
         $this->tokenProvider = $tokenProvider;
         $this->telegramBotName = $telegramBotName;
+        $this->telegramBotToken = $telegramBotToken;
         $this->domain = $domain;
         $this->codeToTokenTransformer = $codeToTokenTransformer;
         $this->jsConfigCompiler = $jsConfigCompiler;
@@ -165,30 +168,6 @@ class TwofaController extends AbstractController
         }
 
         return $this->pageDataCompiler->getPage(PageDataCompiler::PAGE_NAME_TWOFA_LOGIN_CONFIRMATION, $jsConfig);
-    }
-
-    public function enrollCodeTelegram(Request $request) {
-        if ($content = $request->getContent()) {
-            $telegramWebhookAsArray = json_decode($content, true);
-        }
-        $telegramWebhookMessage = $telegramWebhookAsArray['message'];
-        $telegramWebhookMessageChat = $telegramWebhookMessage['chat'];
-        $telegramUserChatId = $telegramWebhookMessageChat['id'];
-        if(null === $telegramUserChatId) {
-            throw new RuntimeException('telegram user chat id must be not null');
-        }
-        $ip = $request->getClientIp();
-        $tokenData = ['telegramChatId' => $telegramUserChatId];
-        $actionHash = $this->tokenProvider->generate(Token::class, $tokenData, $ip);
-        $token = Token::create(777, $actionHash, $telegramUserChatId, $ip, Carbon::now());
-        $telegram = new Api('1203008331:AAGmE0mXwZByNxovFOCtFhbgqDSzKr1XNj8');
-        $params = [
-            'chat_id' => $telegramUserChatId,
-            'text' => '$actionHash',
-        ];
-        $telegram->sendMessage($params);
-
-        return new JsonResponse([]);
     }
 
     public function enrollCode(Request $request)

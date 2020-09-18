@@ -39,9 +39,9 @@ twofa.enroll.code:
   path: /2fa/enroll-code
   controller: Ewll\UserBundle\Controller\TwofaController::enrollCode
   methods: [POST]
-twofa.enroll.code-telegram:
-  path: /2fa/enroll-code/telegram
-  controller: Ewll\UserBundle\Controller\TwofaController::enrollCodeTelegram
+webhook.telegram.handle:
+  path: /webhook/telegram
+  controller: Ewll\UserBundle\Controller\TelegramWebhookController::handle
   methods: [POST]
 twofa.enroll:
   path: /2fa/enroll
