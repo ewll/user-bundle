@@ -170,6 +170,27 @@ class TwofaController extends AbstractController
         return $this->pageDataCompiler->getPage(PageDataCompiler::PAGE_NAME_TWOFA_LOGIN_CONFIRMATION, $jsConfig);
     }
 
+    public function enrollCodeTelegram(Request $request) {
+        if ($content = $request->getContent()) {
+            $telegramWebhookAsArray = json_decode($content, true);
+        }
+        $telegramWebhookMessage = $telegramWebhookAsArray['message'];
+        $telegramWebhookMessageChat = $telegramWebhookMessage['chat'];
+        $telegramUserChatId = $telegramWebhookMessageChat['id'];
+        //$ip = $request->getClientIp();
+        /*$tokenData = ['telegramChatId' => $telegramUserChatId];
+        $actionHash = $this->tokenProvider->generate(Token::class, $tokenData, $ip);
+        $token = Token::create(777, $actionHash, $telegramUserChatId, $ip, Carbon::now());*/
+        $telegram = new Api($this->telegramBotToken);
+        $params = [
+            'chat_id' => $telegramUserChatId,
+            'text' => 'ffffffffff',
+        ];
+        $telegram->sendMessage($params);
+
+        return new JsonResponse([]);
+    }
+
     public function enrollCode(Request $request)
     {
         $formBuilder = $this->createFormBuilder()
