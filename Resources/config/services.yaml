@@ -50,6 +50,13 @@ services:
             - '@translator'
             - '%ewll_user.redirect%'
 
+    Ewll\UserBundle\Controller\TelegramWebhookController:
+        public: true
+        tags: ['controller.service_arguments']
+        calls: [[setContainer, ['@service_container']]]
+        arguments:
+            - '@Ewll\UserBundle\Twofa\TwofaHandler'
+
     Ewll\UserBundle\Controller\CaptchaController:
         public: true
         tags: ['controller.service_arguments']
@@ -71,7 +78,6 @@ services:
             - '@ewll.db.repository-provider'
             - '@Ewll\UserBundle\Token\TokenProvider'
             - '%ewll_user.telegram_bot_name%'
-            - '%ewll_user.telegram_bot_token%'
             - '%ewll_user.domain%'
             - '@Ewll\UserBundle\Form\DataTransformer\CodeToTokenTransformer'
             - '@Ewll\UserBundle\Twofa\JsConfigCompiler'
@@ -176,6 +182,8 @@ services:
             - '@Ewll\UserBundle\Authenticator\Authenticator'
             - '@ewll.db.repository-provider'
             - '@ewll.db.client.default'
+            - '@Ewll\UserBundle\Twofa\Item\TelegramTwofa'
+            - '@Ewll\UserBundle\Token\TokenProvider'
             - '@translator'
             - '@logger'
             - !tagged twofa

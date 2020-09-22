@@ -5,19 +5,21 @@ use Ewll\UserBundle\Twofa\StoredKeyTwofaInterface;
 use Ewll\UserBundle\Twofa\TwofaInterface;
 use GuzzleHttp\Client as Guzzle;
 use GuzzleHttp\Exception\RequestException;
+use Telegram\Bot\Api;
 
 class TelegramTwofa implements StoredKeyTwofaInterface
 {
     const ERROR_DESCRIPTION_CHAT_NOT_FOUND = 'Bad Request: chat not found';
+    const TELEGRAM_TWOFA_TYPE = 'telegram';
 
     private $guzzle;
-    private $telegramBotToken;
+    private $telegramBot;
     private $proxy;
 
     public function __construct(string $telegramBotToken, string $proxy = null)
     {
         $this->guzzle = new Guzzle();
-        $this->telegramBotToken = $telegramBotToken;
+        $this->telegramBot = new Api($telegramBotToken);
         $this->proxy = $proxy;
     }
 
@@ -34,18 +36,12 @@ class TelegramTwofa implements StoredKeyTwofaInterface
     /** @inheritdoc */
     public function sendMessage(string $contact, string $message): void
     {
-        $url = "https://api.telegram.org/bot$this->telegramBotToken/sendMessage";
         try {
             $params = [
                 'chat_id' => $contact,
                 'text' => $message,
             ];
-            $options = [
-                'timeout' => 6,
-                'connect_timeout' => 6,
-                'query' => $params,
-            ];
-            if (null !== $this->proxy) {
+            if (!empty($this->proxy)) {
                 $proxy = parse_url($this->proxy);
                 $options['curl'] = [
                     CURLOPT_PROXY => $proxy['host'],
@@ -54,13 +50,8 @@ class TelegramTwofa implements StoredKeyTwofaInterface
                     CURLOPT_PROXYUSERPWD => "{$proxy['user']}:{$proxy['pass']}",
                 ];
             }
-            $request = $this->guzzle->get($url, $options);
-            $content = $request->getBody()->getContents();
-            $contentData = json_decode($content, true);
-            if (true !== $contentData['ok']) {
-                throw new CannotSendMessageException($content);
-            }
-        } catch (RequestException $e) {
+            $this->telegramBot->sendMessage($params);
+        } catch (\Exception $e) {
             $response = $e->getResponse();
             $statusCode = null === $response ? null : $response->getStatusCode();
             $code = 0;

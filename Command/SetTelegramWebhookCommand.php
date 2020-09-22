@@ -9,6 +9,7 @@ use Telegram\Bot\Api;
 
 class SetTelegramWebhookCommand extends Command
 {
+    const ABSOLUTE_URL = 0;
     private $router;
     private $telegramBot;
 
@@ -23,7 +24,11 @@ class SetTelegramWebhookCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        $url = $this->router->generate(TelegramWebhookController::ROUTE_NAME_PAGE_TELEGRAM_WEBHOOK, [], 0);
+        $url = $this->router->generate(
+            TelegramWebhookController::ROUTE_NAME_TELEGRAM_WEBHOOK,
+            [],
+            SetTelegramWebhookCommand::ABSOLUTE_URL
+        );
         $this->telegramBot->setWebhook([
             'url' => $url
         ]);

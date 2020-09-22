@@ -1,16 +1,23 @@
 <?php namespace Ewll\UserBundle\Twofa;
 
+use Carbon\Carbon;
 use Ewll\DBBundle\DB\Client as DbClient;
 use Ewll\DBBundle\Repository\RepositoryProvider;
 use Ewll\UserBundle\Authenticator\Authenticator;
+use Ewll\UserBundle\Entity\Token;
 use Ewll\UserBundle\Entity\TwofaCode;
 use App\Entity\User;
+use Ewll\UserBundle\Token\Item\TelegramToken;
+use Ewll\UserBundle\Token\TokenProvider;
+use LogicException;
 use Ewll\UserBundle\EwllUserBundle;
 use Ewll\UserBundle\Repository\TwofaCodeRepository;
+use Ewll\UserBundle\Token\Exception\ActiveTokenExistsException;
 use Ewll\UserBundle\Twofa\Exception\CannotProvideCodeException;
 use Ewll\UserBundle\Twofa\Exception\CannotSendMessageException;
 use Ewll\UserBundle\Twofa\Exception\EmptyTwofaCodeException;
 use Ewll\UserBundle\Twofa\Exception\IncorrectTwofaCodeException;
+use Ewll\UserBundle\Twofa\Item\TelegramTwofa;
 use Exception;
 use RuntimeException;
 use Symfony\Bridge\Monolog\Logger;
@@ -21,6 +28,8 @@ class TwofaHandler
     private $authenticator;
     private $repositoryProvider;
     private $defaultDbClient;
+    private $telegramTwofa;
+    private $tokenProvider;
     private $translator;
     private $logger;
     /** @var TwofaInterface[] */
@@ -30,6 +39,8 @@ class TwofaHandler
         Authenticator $authenticator,
         RepositoryProvider $repositoryProvider,
         DbClient $defaultDbClient,
+        TelegramTwofa $telegramTwofa,
+        TokenProvider $tokenProvider,
         TranslatorInterface $translator,
         Logger $logger,
         iterable $twofas
@@ -37,6 +48,8 @@ class TwofaHandler
         $this->authenticator = $authenticator;
         $this->repositoryProvider = $repositoryProvider;
         $this->defaultDbClient = $defaultDbClient;
+        $this->telegramTwofa = $telegramTwofa;
+        $this->tokenProvider = $tokenProvider;
         $this->translator = $translator;
         $this->logger = $logger;
         $this->twofas = $twofas;
@@ -79,6 +92,31 @@ class TwofaHandler
                 if ($e->getCode() === CannotSendMessageException::CODE_RECIPIENT_NOT_EXISTS) {
                     $code = CannotProvideCodeException::CODE_RECIPIENT_NOT_EXISTS;
                 }
+            }
+            $error = $this->transProvideError($code);
+
+            throw new CannotProvideCodeException($error, $code, $e);
+        }
+    }
+
+    public function provideTokenToContact(string $contact, string $ip) {
+        $tokenData = ['contact' => $contact];
+        $token = $this->tokenProvider->generate(TelegramToken::class, $tokenData, $ip);
+        $message = $this->translator
+            ->trans('twofa.code-message', ['%code%' => $token->actionHash], EwllUserBundle::TRANSLATION_DOMAIN);
+        try {
+            $this->telegramTwofa->sendMessage($contact, $message);
+            $this->logger->info(
+                "TwofaCode #{$token->actionHash} provided",
+                ['type' => TelegramToken::TYPE_ID, 'contact' => $contact]
+            );
+        } catch (Exception $e) {
+            $code = CannotProvideCodeException::CODE_CANNOT_SEND;
+            if ($e instanceof CannotSendMessageException) {
+                $this->logger->critical(
+                    "CannotSendMessageException: {$e->getMessage()}",
+                    ['type' => TelegramToken::TYPE_ID, 'contact' => $contact]
+                );
             }
             $error = $this->transProvideError($code);
 
