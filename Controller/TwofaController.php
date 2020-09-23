@@ -166,6 +166,7 @@ class TwofaController extends AbstractController
         return $this->pageDataCompiler->getPage(PageDataCompiler::PAGE_NAME_TWOFA_LOGIN_CONFIRMATION, $jsConfig);
     }
 
+    //@TODO need to delete
     public function enrollCode(Request $request)
     {
         $formBuilder = $this->createFormBuilder()
@@ -252,7 +253,7 @@ class TwofaController extends AbstractController
     public function enroll(Request $request)
     {
         $formBuilder = $this->createFormBuilder()
-            ->add('code', IntegerType::class, [
+            ->add('code', TextType::class, [
                 'constraints' => [new NotBlank()],
             ])
             ->add('type', TextType::class, [

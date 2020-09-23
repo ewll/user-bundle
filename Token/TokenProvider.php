@@ -5,6 +5,7 @@ use Ewll\DBBundle\Repository\RepositoryProvider;
 use Ewll\UserBundle\Entity\Token;
 use Ewll\UserBundle\Token\Exception\ActiveTokenExistsException;
 use Ewll\UserBundle\Token\Exception\TokenNotFoundException;
+use Ewll\UserBundle\Token\Item\TelegramToken;
 use RuntimeException;
 use Symfony\Bridge\Monolog\Logger;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
@@ -43,7 +44,11 @@ class TokenProvider
     {
         $tokenRepository = $this->repositoryProvider->get(Token::class);
         $tokenItem = $this->getTokenItemByClass($class);
-        $actionHash = md5("{$tokenItem->getTypeId()}{$data[$tokenItem->getIdDataKey()]}");
+        if($tokenItem->getTypeId() === TelegramToken::TYPE_ID) {
+            $actionHash = bin2hex(random_bytes(6));
+        } else {
+            $actionHash = md5("{$tokenItem->getTypeId()}{$data[$tokenItem->getIdDataKey()]}");
+        }
         if ($isCheckExists) {
             $activeToken = $tokenRepository->findOneBy(['actionHash' => $actionHash]);
             if (null !== $activeToken) {

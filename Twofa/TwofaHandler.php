@@ -7,6 +7,7 @@ use Ewll\UserBundle\Authenticator\Authenticator;
 use Ewll\UserBundle\Entity\Token;
 use Ewll\UserBundle\Entity\TwofaCode;
 use App\Entity\User;
+use Ewll\UserBundle\Repository\TokenRepository;
 use Ewll\UserBundle\Token\Item\TelegramToken;
 use Ewll\UserBundle\Token\TokenProvider;
 use LogicException;
@@ -101,7 +102,7 @@ class TwofaHandler
 
     public function provideTokenToContact(string $contact, string $ip) {
         $tokenData = ['contact' => $contact];
-        $token = $this->tokenProvider->generate(TelegramToken::class, $tokenData, $ip);
+        $token = $this->tokenProvider->generate(TelegramToken::class, $tokenData, $ip, true);
         $message = $this->translator
             ->trans('twofa.code-message', ['%code%' => $token->actionHash], EwllUserBundle::TRANSLATION_DOMAIN);
         try {
@@ -151,8 +152,8 @@ class TwofaHandler
         string $context = null
     ): void {
         $actionId = TwofaCode::ACTION_ID_ENROLL;
-        /** @var TwofaCodeRepository $twofaCodeRepository */
-        $twofaCodeRepository = $this->repositoryProvider->get(TwofaCode::class);
+        /** @var TokenRepository $tokenRepository */
+        $tokenRepository = $this->repositoryProvider->get(Token::class);
         $this->defaultDbClient->beginTransaction();
         try {
             $isStoredKey = $twofa instanceof StoredKeyTwofaInterface;
@@ -160,12 +161,13 @@ class TwofaHandler
                 throw new EmptyTwofaCodeException($isStoredKey, $actionId);
             }
             if ($twofa instanceof StoredKeyTwofaInterface) {
-                $activeTwofaCode = $twofaCodeRepository->findActive($user->id, $actionId, true);
-                if (null === $activeTwofaCode || $activeTwofaCode->code !== $code) {
+                $activeTelegramToken = $tokenRepository->findActive($code);
+                if (null === $activeTelegramToken) {
                     throw new IncorrectTwofaCodeException($isStoredKey, $actionId);
                 }
-                $twofaCodeRepository->delete($activeTwofaCode, true);
-                $data = ['contact' => $activeTwofaCode->contact];
+                $telegramToken = $tokenRepository->findById($activeTelegramToken->id);
+                $tokenRepository->delete($telegramToken, true);
+                $data = ['contact' => $telegramToken->data['contact']];
             } elseif ($twofa instanceof CheckKeyOnTheFlyTwofaInterface) {
                 $data = $twofa->compileDataFromContext($context);
                 if (!$twofa->isCodeCorrect($data, $code)) {

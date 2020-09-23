@@ -13,18 +13,9 @@
                 </v-chip>
             </div>
         </v-alert>
-        <v-alert class="vuetifyAlert__noPadding" icon="mdi-numeric-2" dense>
-            <div>
-                Теперь введите ваш id и получите код. Как узнать свой id смотрите
-                <a :href="'https://doc.'+config.domain+'/telegramId'" target="_blank">здесь</a>.
-            </div>
-            <div>
-                <enroll-code-form/>
-            </div>
-        </v-alert>
         <v-alert class="vuetifyAlert__noPadding" icon="mdi-numeric-3" dense>
             <div>
-                И, наконец, введите полученный код здесь.
+                Теперь введите полученный код здесь.
             </div>
             <div>
                 <v-text-field label="Код" :error-messages="form.errors.code" v-model="form.data.code"/>
@@ -34,10 +25,8 @@
 </template>
 
 <script>
-    import EnrollCodeForm from './../component/EnrollCodeForm';
 
     export default {
-        components: {EnrollCodeForm},
         props: {
             form: Object,
         },

@@ -28,11 +28,7 @@ class TelegramWebhookController extends AbstractController
         $telegramWebhookMessage = $telegramWebhookAsArray['message'];
         $telegramWebhookMessageChat = $telegramWebhookMessage['chat'];
         $telegramUserChatId = $telegramWebhookMessageChat['id'];
-        try {
-            $this->twofaHandler->provideTokenToContact($telegramUserChatId, $request->getClientIp());
-        } catch (\Exception $exception) {
-
-        }
+        $this->twofaHandler->provideTokenToContact($telegramUserChatId, $request->getClientIp());
 
         return new JsonResponse([]);
     }

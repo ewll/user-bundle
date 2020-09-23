@@ -3,13 +3,13 @@
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Routing\Router;
 use Ewll\UserBundle\Controller\TelegramWebhookController;
 use Telegram\Bot\Api;
 
 class SetTelegramWebhookCommand extends Command
 {
-    const ABSOLUTE_URL = 0;
     private $router;
     private $telegramBot;
 
@@ -27,7 +27,7 @@ class SetTelegramWebhookCommand extends Command
         $url = $this->router->generate(
             TelegramWebhookController::ROUTE_NAME_TELEGRAM_WEBHOOK,
             [],
-            SetTelegramWebhookCommand::ABSOLUTE_URL
+            UrlGeneratorInterface::ABSOLUTE_URL
         );
         $this->telegramBot->setWebhook([
             'url' => $url
