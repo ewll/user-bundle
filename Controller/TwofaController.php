@@ -166,52 +166,6 @@ class TwofaController extends AbstractController
         return $this->pageDataCompiler->getPage(PageDataCompiler::PAGE_NAME_TWOFA_LOGIN_CONFIRMATION, $jsConfig);
     }
 
-    //@TODO need to delete
-    public function enrollCode(Request $request)
-    {
-        $formBuilder = $this->createFormBuilder()
-            ->add('contact', IntegerType::class, [
-                'constraints' => [new NotBlank()],
-            ])
-            ->add('type', TextType::class, [
-                'constraints' => [new NotBlank()],
-            ])
-            ->add('token', TextType::class, [
-                'constraints' => [new NotBlank(), new TokenType(TwofaSetToken::TYPE_ID)],
-            ]);
-        $formBuilder->get('type')->addModelTransformer($this->twofaTypeToServiceTransformer);
-        $formBuilder->get('token')->addViewTransformer($this->codeToTokenTransformer);
-        $form = $formBuilder->getForm();
-        $form->submit($request->request->get('form', []));
-        if ($form->isValid()) {
-            $data = $form->getData();
-            $contact = $data['contact'];
-            $twofaService = $data['type'];
-            /** @var Token $token */
-            $token = $data['token'];
-            if (!$twofaService instanceof StoredKeyTwofaInterface) {
-                throw new RuntimeException('Only StoredKeyTwofaInterface must be here');
-            }
-            /** @var User $user */
-            $user = $this->repositoryProvider->get(User::class)->findById($token->data['userId']);
-            if ($user->hasTwofa()) {
-                $form->addError(new FormError($this->translator->trans('twofa.already-has', [], 'validators')));
-            } else {
-                try {
-                    $this->twofaHandler->provideCodeToContact($user, $twofaService, $contact,
-                        TwofaCode::ACTION_ID_ENROLL);;
-                } catch (CannotProvideCodeException $e) {
-                    $form->addError(new FormError($e->getMessage()));
-                }
-            }
-            if ($form->isValid()) {
-                return new JsonResponse([]);
-            }
-        }
-
-        return new FormErrorResponse($form);
-    }
-
     public function loginCode(Request $request)
     {
         $form = $this->pageDataCompiler->makeAndSubmitAuthForm($request, PageDataCompiler::FORM_AUTH_TYPE_LOGIN_CODE);

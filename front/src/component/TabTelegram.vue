@@ -13,9 +13,9 @@
                 </v-chip>
             </div>
         </v-alert>
-        <v-alert class="vuetifyAlert__noPadding" icon="mdi-numeric-3" dense>
+        <v-alert class="vuetifyAlert__noPadding" icon="mdi-numeric-2" dense>
             <div>
-                Теперь введите полученный код здесь.
+                Теперь введите код здесь, полученный от телеграмм.
             </div>
             <div>
                 <v-text-field label="Код" :error-messages="form.errors.code" v-model="form.data.code"/>

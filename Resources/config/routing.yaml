@@ -35,10 +35,6 @@ twofa.page.login-confirm:
   path: /2fa/login/{tokenCode}
   controller: Ewll\UserBundle\Controller\TwofaController::loginConfirmPage
   methods: [GET]
-twofa.enroll.code:
-  path: /2fa/enroll-code
-  controller: Ewll\UserBundle\Controller\TwofaController::enrollCode
-  methods: [POST]
 webhook.telegram.handle:
   path: /webhook/telegram
   controller: Ewll\UserBundle\Controller\TelegramWebhookController::handle
