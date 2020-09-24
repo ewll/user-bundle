@@ -5,12 +5,11 @@ use Ewll\UserBundle\Twofa\TwofaHandler;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 class TelegramWebhookController extends AbstractController
 {
     const ROUTE_NAME_TELEGRAM_WEBHOOK = 'webhook.telegram.handle';
-    const TELEGRAM_WEBHOOK_NOT_HANDLED_STATUS_CODE = 400;
-    const TELEGRAM_WEBHOOK_HANDLED_SUCCESSFULLY_STATUS_CODE = 200;
 
     private $twofaHandler;
 
@@ -34,9 +33,9 @@ class TelegramWebhookController extends AbstractController
         try {
             $this->twofaHandler->provideTokenToContact($telegramUserChatId, $request->getClientIp());
         } catch (CannotProvideCodeException $exception) {
-            return new JsonResponse([], self::TELEGRAM_WEBHOOK_NOT_HANDLED_STATUS_CODE);
+            return new JsonResponse([], Response::HTTP_BAD_REQUEST);
         }
 
-        return new JsonResponse([], self::TELEGRAM_WEBHOOK_HANDLED_SUCCESSFULLY_STATUS_CODE);
+        return new JsonResponse([]);
     }
 }
