@@ -2,7 +2,8 @@
     <div>
         <v-alert class="vuetifyAlert__noPadding" icon="mdi-numeric-1" dense>
             <div>
-                Для настройки 2fa через telegram добавьте следующего бота в контакты и нажмите START.
+                Для настройки 2fa через telegram добавьте следующего бота в контакты, где
+                "нажмите старт" и вы получите код для подключения двухфакторной авторизации.
             </div>
             <div class="text-center" style="margin: 10px 0">
                 <v-chip class="mr-2" color="primary" dark
@@ -15,7 +16,7 @@
         </v-alert>
         <v-alert class="vuetifyAlert__noPadding" icon="mdi-numeric-2" dense>
             <div>
-                Теперь введите код здесь, полученный от телеграмм.
+                Теперь введите полученный код здесь.
             </div>
             <div>
                 <v-text-field label="Код" :error-messages="form.errors.code" v-model="form.data.code"/>

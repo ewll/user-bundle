@@ -102,7 +102,15 @@ class TwofaHandler
 
     public function provideTokenToContact(string $contact, string $ip) {
         $tokenData = ['contact' => $contact];
-        $token = $this->tokenProvider->generate(TelegramToken::class, $tokenData, $ip, true);
+        $i = 0;
+        while($i < 99) {
+            try {
+                $token = $this->tokenProvider->generate(TelegramToken::class, $tokenData, $ip, true);
+                break;
+            } catch (ActiveTokenExistsException $exception) {
+                $i++;
+            }
+        }
         $message = $this->translator
             ->trans('twofa.code-message', ['%code%' => $token->actionHash], EwllUserBundle::TRANSLATION_DOMAIN);
         try {
