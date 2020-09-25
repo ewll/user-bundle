@@ -1,6 +1,6 @@
 <?php namespace Ewll\UserBundle\Controller;
 
-use Ewll\UserBundle\Twofa\Exception\CannotProvideCodeException;
+use Ewll\UserBundle\Twofa\Exception\CannotProvideTokenException;
 use Ewll\UserBundle\Twofa\TwofaHandler;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -36,7 +36,7 @@ class TelegramWebhookController extends AbstractController
         $telegramUserChatId = $telegramWebhookMessageChat['id'];
         try {
             $this->twofaHandler->provideTokenToContact($telegramUserChatId, $request->getClientIp());
-        } catch (CannotProvideCodeException $exception) {
+        } catch (CannotProvideTokenException $exception) {
             return new JsonResponse([], Response::HTTP_BAD_REQUEST);
         }
 

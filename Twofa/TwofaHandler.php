@@ -11,6 +11,7 @@ use Ewll\UserBundle\EwllUserBundle;
 use Ewll\UserBundle\Repository\TwofaCodeRepository;
 use Ewll\UserBundle\Token\Exception\ActiveTokenExistsException;
 use Ewll\UserBundle\Twofa\Exception\CannotProvideCodeException;
+use Ewll\UserBundle\Twofa\Exception\CannotProvideTokenException;
 use Ewll\UserBundle\Twofa\Exception\CannotSendMessageException;
 use Ewll\UserBundle\Twofa\Exception\EmptyTwofaCodeException;
 use Ewll\UserBundle\Twofa\Exception\IncorrectTwofaCodeException;
@@ -101,23 +102,23 @@ class TwofaHandler
         $i = 0;
         while($i < 99) {
             try {
-                $token = $this->tokenProvider->generate(TelegramToken::class, $tokenData, $ip, true);
+                $token = $this->tokenProvider->generate(TelegramToken::class, $tokenData, $ip);
                 break;
             } catch (ActiveTokenExistsException $exception) {
                 $i++;
             }
         }
-        $code = $this->tokenProvider->compileTokenCode($token);
+        $provideTokenToContact = $this->tokenProvider->compileTokenCode($token);
         $message = $this->translator
-            ->trans('twofa.code-message', ['%code%' => $code], EwllUserBundle::TRANSLATION_DOMAIN);
+            ->trans('twofa.token-message', ['%provideTokenToContact%' => $provideTokenToContact], EwllUserBundle::TRANSLATION_DOMAIN);
         try {
             $this->telegramTwofa->sendMessage($contact, $message);
             $this->logger->info(
-                "TwofaCode #{$token->actionHash} provided",
+                "TwofaToken #{$provideTokenToContact} provided",
                 ['type' => TelegramToken::TYPE_ID, 'contact' => $contact]
             );
         } catch (Exception $e) {
-            $code = CannotProvideCodeException::CODE_CANNOT_SEND;
+            $code = CannotProvideTokenException::CODE_CANNOT_SEND;
             if ($e instanceof CannotSendMessageException) {
                 $this->logger->critical(
                     "CannotSendMessageException: {$e->getMessage()}",
@@ -126,7 +127,7 @@ class TwofaHandler
             }
             $error = $this->transProvideError($code);
 
-            throw new CannotProvideCodeException($error, $code, $e);
+            throw new CannotProvideTokenException($error, $code, $e);
         }
     }
 

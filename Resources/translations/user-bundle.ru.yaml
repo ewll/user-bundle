@@ -8,3 +8,4 @@ title:
   oauth: Oauth
 twofa:
   code-message: '2fa-код подтверждения: %code%. Действие кода 1 минута. Не показывайте его никому!'
+  token-message: '2fa-токен подтверждения: %provideTokenToContact%. Действие токена 1 минута. Не показывайте его никому!'
