@@ -197,7 +197,8 @@ services:
     Ewll\UserBundle\Twofa\Item\TelegramTwofa:
         arguments:
             - '%ewll_user.telegram_bot_token%'
-        tags: ['twofa']
+            - '%ewll_user.telegram_proxy%'
+        tags: [ 'twofa' ]
 
     Ewll\UserBundle\Twofa\Item\GoogleTwofa:
         arguments: []

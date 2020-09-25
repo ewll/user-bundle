@@ -28,6 +28,10 @@ class TelegramWebhookController extends AbstractController
             $telegramWebhookAsArray = json_decode($content, true);
         }
         $telegramWebhookMessage = $telegramWebhookAsArray['message'];
+        $telegramWebhookMessageText = $telegramWebhookMessage['text'];
+        if($telegramWebhookMessageText !== '/start') {
+            return new JsonResponse([]);
+        }
         $telegramWebhookMessageChat = $telegramWebhookMessage['chat'];
         $telegramUserChatId = $telegramWebhookMessageChat['id'];
         try {
