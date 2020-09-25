@@ -243,7 +243,7 @@ class TwofaController extends AbstractController
                 } catch (EmptyTwofaCodeException $e) {
                     $form->get('code')
                         ->addError(new FormError($this->translator->trans('twofa.code.empty', [], 'validators')));
-                } catch (IncorrectTwofaCodeException $e) {
+                } catch (IncorrectTwofaCodeException|TokenNotFoundException $e) {
                     $form->get('code')
                         ->addError(new FormError($this->translator->trans('twofa.code.incorrect', [], 'validators')));
                 }

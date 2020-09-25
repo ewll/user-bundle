@@ -19,23 +19,4 @@ SQL
 
         return $affectedRows;
     }
-
-    public function findActive(string $code)
-    {
-        $statement = $this
-            ->dbClient
-            ->prepare(<<<SQL
-SELECT * FROM {$this->config->tableName} 
-WHERE 
-    actionHash = :code 
-    AND expirationTs > NOW()
-SQL
-            )
-            ->execute([
-                'code' => $code,
-            ]);
-
-        $token = $statement->fetchObject(Token::class);
-        return $token;
-    }
 }
